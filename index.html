@@ -56,6 +56,9 @@
     .btn-submit { width: 100%; padding: 14px; background: #3B82F6; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
     .btn-cancel { width: 100%; margin-top: 10px; background: none; border: none; color: #888; cursor: pointer; }
     .btn-sm { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; background: white; font-size: 12px; cursor: pointer; }
+    .category-btns { display: flex; gap: 6px; flex-wrap: nowrap; }
+    .cat-btn { flex: 1; padding: 8px 4px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; text-align: center; white-space: nowrap; }
+    .cat-btn.active { background: #EFF6FF; border-color: #3B82F6; color: #3B82F6; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -95,7 +98,7 @@
     </div>
     <div class="form-row"><label>日期</label><input id="txDate" type="date"></div>
     <div class="form-row"><label>金額</label><input id="txAmount" type="number" inputmode="numeric"></div>
-    <div class="form-row"><label>分類</label><select id="txCategory"></select></div>
+    <div class="form-row"><label>分類</label><div class="category-btns" id="txCategory"></div></div>
     <div class="form-row"><label>備註</label><input id="txNote" type="text"></div>
     <button class="btn-submit" id="submitBtn" onclick="submitTransaction()">✅ 確認記錄</button>
     <button class="btn-cancel" onclick="closeModal()">取消</button>
@@ -263,12 +266,17 @@
     updateCategorySelect();
   }
 
-  function updateCategorySelect() {
-    const sel = document.getElementById('txCategory');
-    sel.innerHTML = allCategories
-      .filter(c => c.type === currentTxType)
-      .map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`)
-      .join('');
+  function updateCategorySelect(selectedName) {
+    const container = document.getElementById('txCategory');
+    const cats = allCategories.filter(c => c.type === currentTxType);
+    container.innerHTML = cats.map((c, i) =>
+      `<button class="cat-btn${(!selectedName && i === 0) || c.name === selectedName ? ' active' : ''}" onclick="selectCategory(this)" data-value="${c.name}">${c.icon} ${c.name}</button>`
+    ).join('');
+  }
+
+  function selectCategory(btn) {
+    document.querySelectorAll('#txCategory .cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
   }
 
   async function submitTransaction() {
@@ -279,7 +287,7 @@
       id: editingId || Date.now().toString(), // 如果是新增，產生一個唯一 ID
       date: document.getElementById('txDate').value,
       type: currentTxType,
-      category: document.getElementById('txCategory').value,
+      category: document.querySelector('#txCategory .cat-btn.active')?.dataset.value || '',
       amount: amount,
       note: document.getElementById('txNote').value
     };
@@ -322,7 +330,7 @@
     document.getElementById('txAmount').value = tx.amount;
     document.getElementById('txNote').value = tx.note;
     setType(tx.type);
-    document.getElementById('txCategory').value = tx.category;
+    updateCategorySelect(tx.category);
     document.getElementById('modalOverlay').classList.add('show');
     document.getElementById('modal').classList.add('show');
   }
