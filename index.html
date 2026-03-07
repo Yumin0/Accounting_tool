@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>記帳工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, Arial, sans-serif; background: white; color: #1C1C1E; font-size: 16px; }
+
+    .header {
+      background: #1E3A5F; color: white;
+      padding: 16px; display: flex;
+      align-items: center; justify-content: space-between;
+    }
+    .header h1 { font-size: 20px; }
+    .month-nav { display: flex; align-items: center; gap: 12px; }
+    .month-nav button {
+      background: rgba(255,255,255,0.2); border: none; color: white;
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 16px;
+    }
+    .month-nav span { font-size: 16px; font-weight: bold; min-width: 80px; text-align: center; }
+
+    .summary {
+      display: flex; gap: 8px; padding: 12px 16px;
+      background: white; border-bottom: 1px solid #E2E8F0;
+    }
+    .summary-card { flex: 1; text-align: center; padding: 8px 4px; border-radius: 8px; background: #F8FAFC; }
+    .summary-card .label { font-size: 20px; color: #6B7280; margin-bottom: 4px; }
+    .summary-card .value { font-size: 20px; font-weight: bold; }
+    .value.expense { color: #EF4444; }
+    .value.income  { color: #22C55E; }
+    .value.saving  { color: #3B82F6; }
+
+    .calendar { padding: 0 12px 8px; background: white; }
+
+    /* 星期標題 */
+    .month-weekdays {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      padding: 8px 0 4px;
+      border-bottom: 1px solid #E5E5EA;
+    }
+    .month-weekday {
+      text-align: center; font-size: 20px;
+      color: #8E8E93; font-weight: 600;
+    }
+
+    /* 月曆：週與週之間有線，日與日之間無邊框 */
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+
+    /* 每一行（週）用 row-wrapper 包起來加底線 */
+    .week-row {
+      display: contents;
+    }
+    .week-row-line {
+      grid-column: 1 / -1;
+      height: 1px;
+      background: #E5E5EA;
+    }
+
+    .month-day {
+      min-height: 250px;
+      padding: 8px 4px 4px;
+      background: white;
+      cursor: pointer;
+      display: flex; flex-direction: column;
+      align-items: center;
+    }
+    .month-day.empty-cell { cursor: default; }
+    .month-day.future     { cursor: default; }
+    .month-day.today      { background: white; }
+
+    .d-num {
+      font-size: 35px; font-weight: 400; color: #1C1C1E;
+      width: 60px; height: 60px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .month-day.today .d-num  { background: #ef4345; color: white; font-weight: 700; }
+    .month-day.future .d-num { color: #C7C7CC; }
+    .month-day.empty-cell .d-num { visibility: hidden; }
+
+    .d-content {
+      width: 100%; margin-top: 4px;
+      display: flex; flex-direction: column; gap: 2px;
+      align-items: stretch;
+    }
+
+    .d-exp {
+      display: block; width: 100%;
+      font-size: 20px; font-weight: 600;
+      background: #FECACA; color: #EF4444;
+      border-radius: 20px; padding: 2px 5px;
+      line-height: 1.5; text-align: center;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .d-inc {
+      display: block; width: 100%;
+      font-size: 20px; font-weight: 600;
+      background: #BBF7D0; color: #16A34A;
+      border-radius: 20px; padding: 2px 5px;
+      line-height: 1.5; text-align: center;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* 明細 Panel */
+    .detail-panel {
+      background: white; border-radius: 12px;
+      margin: 8px 12px; overflow: hidden;
+      border: 1px solid #E5E5EA;
+    }
+    .detail-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .detail-date { font-size: 16px; font-weight: bold; color: #1E3A5F; }
+    .detail-actions { display: flex; gap: 8px; }
+
+    .detail-item {
+      display: flex; align-items: center;
+      padding: 12px 16px; border-bottom: 1px solid #F1F5F9;
+    }
+    .detail-item:last-child { border-bottom: none; }
+
+    .di-icon  { font-size: 22px; width: 36px; flex-shrink: 0; }
+    .di-info  { flex: 1; }
+    .di-cat   { font-size: 14px; font-weight: 600; color: #1C1C1E; }
+    .di-meta  { font-size: 12px; color: #8E8E93; margin-top: 1px; }
+    .di-right { text-align: right; flex-shrink: 0; margin-left: 8px; }
+    .di-amt   { font-size: 15px; font-weight: bold; color: #EF4444; }
+    .di-amt.income { color: #22C55E; }
+    .di-date  { font-size: 11px; color: #C7C7CC; margin-top: 2px; }
+    .di-btns  { display: flex; gap: 4px; margin-top: 4px; justify-content: flex-end; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4); z-index: 100;
+    }
+    .modal-overlay.show { display: block; }
+    .modal {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: white; border-radius: 16px 16px 0 0;
+      padding: 20px 16px 40px;
+      transform: translateY(100%); transition: transform 0.3s ease;
+      z-index: 101; max-height: 90vh; overflow-y: auto;
+    }
+    .modal.show { transform: translateY(0); }
+    .modal-handle { width: 40px; height: 4px; background: #CBD5E1; border-radius: 2px; margin: 0 auto 16px; }
+    .modal-title  { font-size: 18px; font-weight: bold; color: #1E3A5F; margin-bottom: 16px; }
+
+    .form-row { margin-bottom: 12px; }
+    .form-row label { display: block; font-size: 13px; color: #6B7280; margin-bottom: 4px; }
+    .form-row input, .form-row select {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #E2E8F0; border-radius: 8px;
+      font-size: 16px; background: white;
+    }
+    .form-row input:focus, .form-row select:focus { outline: none; border-color: #3B82F6; }
+
+    .type-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .type-tab {
+      flex: 1; padding: 8px; border-radius: 8px;
+      border: 1.5px solid #E2E8F0; background: white;
+      cursor: pointer; font-size: 14px; font-weight: bold; color: #6B7280;
+    }
+    .type-tab.active-expense { background: #FEF2F2; border-color: #EF4444; color: #EF4444; }
+    .type-tab.active-income  { background: #F0FDF4; border-color: #22C55E; color: #22C55E; }
+
+    .btn-submit {
+      width: 100%; padding: 14px; background: #3B82F6; color: white;
+      border: none; border-radius: 10px; font-size: 16px; font-weight: bold;
+      cursor: pointer; margin-top: 8px;
+    }
+    .btn-submit:disabled { background: #93C5FD; }
+    .btn-cancel {
+      width: 100%; padding: 10px; background: none; color: #6B7280;
+      border: none; font-size: 14px; cursor: pointer; margin-top: 6px;
+    }
+
+    .btn-sm {
+      padding: 4px 10px; border-radius: 4px;
+      border: 1px solid #E2E8F0; background: white;
+      font-size: 12px; cursor: pointer; color: #6B7280;
+    }
+    .btn-sm.del { color: #EF4444; border-color: #FECACA; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>📒 記帳工具</h1>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">◀</button>
+      <span id="monthLabel"></span>
+      <button onclick="changeMonth(1)">▶</button>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="summary-card">
+      <div class="label">本月支出</div>
+      <div class="value expense" id="totalExpense">-</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">本月收入</div>
+      <div class="value income" id="totalIncome">-</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">可儲蓄</div>
+      <div class="value saving" id="totalSaving">-</div>
+    </div>
+  </div>
+
+  <div class="calendar">
+    <div class="month-weekdays">
+      <div class="month-weekday">一</div>
+      <div class="month-weekday">二</div>
+      <div class="month-weekday">三</div>
+      <div class="month-weekday">四</div>
+      <div class="month-weekday">五</div>
+      <div class="month-weekday">六</div>
+      <div class="month-weekday">日</div>
+    </div>
+    <div class="month-grid" id="monthGrid"></div>
+  </div>
+
+  <div id="detailPanel"></div>
+
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">新增記錄</div>
+    <div class="type-tabs">
+      <button class="type-tab active-expense" id="tabExpense" onclick="setType('expense')">💸 支出</button>
+      <button class="type-tab" id="tabIncome"  onclick="setType('income')">💰 收入</button>
+    </div>
+    <div class="form-row">
+      <label>日期</label>
+      <input id="txDate" type="date" />
+    </div>
+    <div class="form-row">
+      <label>金額</label>
+      <input id="txAmount" type="number" placeholder="請輸入金額" inputmode="numeric" />
+    </div>
+    <div class="form-row">
+      <label>分類</label>
+      <select id="txCategory"></select>
+    </div>
+    <div class="form-row">
+      <label>備註（選填）</label>
+      <input id="txNote" type="text" placeholder="例如：午餐便當" />
+    </div>
+    <button class="btn-submit" id="submitBtn" onclick="submitTransaction()">✅ 確認記錄</button>
+    <button class="btn-cancel" onclick="closeModal()">取消</button>
+    <div id="submitStatus" style="text-align:center;margin-top:8px;font-size:14px;color:#6B7280;"></div>
+  </div>
+
+  <div style="position:fixed;bottom:24px;right:20px;">
+    <button onclick="openModal(null)" style="
+      width:56px;height:56px;border-radius:50%;
+      background:#3B82F6;color:white;border:none;
+      font-size:28px;cursor:pointer;
+      box-shadow:0 4px 12px rgba(59,130,246,0.4);">＋</button>
+  </div>
+
+<script>
+  let currentYear   = new Date().getFullYear();
+  let currentMonth  = new Date().getMonth() + 1;
+  let allCategories = [];
+  let calendarData  = {};
+  let allTxData     = [];
+  let editingId     = null;
+  let currentTxType = 'expense';
+
+  function getMonthStr() {
+    return currentYear + '-' + String(currentMonth).padStart(2, '0');
+  }
+
+  function formatDate(d) {
+    return d.getFullYear() + '-' +
+      String(d.getMonth()+1).padStart(2,'0') + '-' +
+      String(d.getDate()).padStart(2,'0');
+  }
+
+  function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+    if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
+    document.getElementById('detailPanel').innerHTML = '';
+    loadAll();
+  }
+
+  function loadAll() {
+    const m = getMonthStr();
+    document.getElementById('monthLabel').textContent = m;
+
+    google.script.run
+      .withSuccessHandler(function(data) {
+        allTxData    = data.transactions;
+        calendarData = data.calendarData;
+        updateSummary();
+        renderMonthView();
+      })
+      .withFailureHandler(function(err) { console.log('載入失敗：' + err); })
+      .getMonthData(m);
+
+    google.script.run
+      .withSuccessHandler(function(data) {
+        allCategories = data;
+        updateCategorySelect();
+      })
+      .getCategories();
+  }
+
+  function updateSummary() {
+    let exp = 0, inc = 0;
+    allTxData.forEach(tx => {
+      if (tx.type === 'expense') exp += Number(tx.amount);
+      else inc += Number(tx.amount);
+    });
+    document.getElementById('totalExpense').textContent = '$' + exp.toLocaleString();
+    document.getElementById('totalIncome').textContent  = '$' + inc.toLocaleString();
+    document.getElementById('totalSaving').textContent  = '$' + (inc - exp).toLocaleString();
+  }
+
+  function renderMonthView() {
+    const today    = formatDate(new Date());
+    const firstDay = new Date(currentYear, currentMonth - 1, 1);
+    const lastDay  = new Date(currentYear, currentMonth, 0);
+    const offset   = (firstDay.getDay() === 0) ? 6 : firstDay.getDay() - 1;
+    const totalDays = offset + lastDay.getDate();
+    const totalCells = Math.ceil(totalDays / 7) * 7;
+
+    let cells = [];
+
+    // 空白格
+    for (let i = 0; i < offset; i++) {
+      cells.push(`<div class="month-day empty-cell"><div class="d-num"></div></div>`);
+    }
+
+    // 日期格
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const dateStr  = getMonthStr() + '-' + String(day).padStart(2,'0');
+      const isToday  = dateStr === today;
+      const isFuture = dateStr > today;
+
+      const dayTx  = allTxData.filter(tx => tx.date === dateStr);
+      const dayExp = dayTx.filter(tx => tx.type === 'expense').reduce((s, tx) => s + Number(tx.amount), 0);
+      const dayInc = dayTx.filter(tx => tx.type === 'income').reduce((s, tx) => s + Number(tx.amount), 0);
+
+      let cls = 'month-day';
+      if (isToday)       cls += ' today';
+      else if (isFuture) cls += ' future';
+
+      const clickAttr = isFuture ? '' : `onclick="handleDayClick('${dateStr}')"`;
+
+      let cell = `<div class="${cls}" ${clickAttr}>
+        <div class="d-num">${day}</div>
+        <div class="d-content">`;
+      if (dayExp > 0) cell += `<div class="d-exp">-$${dayExp.toLocaleString()}</div>`;
+      if (dayInc > 0) cell += `<div class="d-inc">+$${dayInc.toLocaleString()}</div>`;
+      cell += `</div></div>`;
+      cells.push(cell);
+    }
+
+    // 尾巴空白格
+    while (cells.length < totalCells) {
+      cells.push(`<div class="month-day empty-cell"><div class="d-num"></div></div>`);
+    }
+
+    // 每 7 格一週，週與週之間插入分隔線
+    let html = '';
+    for (let i = 0; i < cells.length; i++) {
+      if (i > 0 && i % 7 === 0) {
+        html += `<div class="week-row-line"></div>`;
+      }
+      html += cells[i];
+    }
+
+    document.getElementById('monthGrid').innerHTML = html;
+  }
+
+  function handleDayClick(dateStr) {
+    const dayTx = allTxData.filter(tx => tx.date === dateStr);
+    if (dayTx.length === 0) {
+      openModal(dateStr);
+    } else {
+      showDayDetail(dateStr, dayTx);
+    }
+  }
+
+  function showDayDetail(dateStr, dayTx) {
+    const panel = document.getElementById('detailPanel');
+    const catMap = {};
+    allCategories.forEach(c => { catMap[c.name] = c.icon; });
+
+    let html = `<div class="detail-panel">
+      <div class="detail-header">
+        <div class="detail-date">📅 ${dateStr}</div>
+        <div class="detail-actions">
+          <button class="btn-sm" onclick="openModal('${dateStr}')">＋ 新增</button>
+          <button class="btn-sm" onclick="document.getElementById('detailPanel').innerHTML=''">✕</button>
+        </div>
+      </div>`;
+
+    dayTx.forEach(tx => {
+      const isIncome = tx.type === 'income';
+      const amtCls   = isIncome ? 'income' : '';
+      const sign     = isIncome ? '+' : '-';
+      const icon     = catMap[tx.category] || '📦';
+      html += `<div class="detail-item">
+        <div class="di-icon">${icon}</div>
+        <div class="di-info">
+          <div class="di-cat">${tx.category}</div>
+          <div class="di-meta">${tx.note || '無備註'}</div>
+        </div>
+        <div class="di-right">
+          <div class="di-amt ${amtCls}">${sign}$${Number(tx.amount).toLocaleString()}</div>
+          <div class="di-date">${tx.date}</div>
+          <div class="di-btns">
+            <button class="btn-sm" onclick="editItem('${tx.id}')">編輯</button>
+            <button class="btn-sm del" onclick="deleteItem('${tx.id}')">刪除</button>
+          </div>
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+    panel.innerHTML = html;
+    panel.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function openModal(dateStr) {
+    editingId = null;
+    document.getElementById('modalTitle').textContent = '新增記錄';
+    document.getElementById('txDate').value   = dateStr || formatDate(new Date());
+    document.getElementById('txAmount').value = '';
+    document.getElementById('txNote').value   = '';
+    document.getElementById('submitStatus').textContent = '';
+    setType('expense');
+    document.getElementById('modalOverlay').classList.add('show');
+    setTimeout(() => document.getElementById('modal').classList.add('show'), 10);
+    setTimeout(() => document.getElementById('txAmount').focus(), 300);
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+    document.getElementById('modalOverlay').classList.remove('show');
+    editingId = null;
+  }
+
+  function setType(type) {
+    currentTxType = type;
+    document.getElementById('tabExpense').className =
+      'type-tab' + (type === 'expense' ? ' active-expense' : '');
+    document.getElementById('tabIncome').className =
+      'type-tab' + (type === 'income' ? ' active-income' : '');
+    updateCategorySelect();
+  }
+
+  function updateCategorySelect() {
+    const sel = document.getElementById('txCategory');
+    sel.innerHTML = allCategories
+      .filter(c => c.type === currentTxType)
+      .map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`)
+      .join('');
+    if (editingId && sel.dataset.selected) sel.value = sel.dataset.selected;
+  }
+
+  function editItem(id) {
+    const tx = allTxData.find(t => t.id === id);
+    if (!tx) { alert('找不到資料'); return; }
+    editingId = tx.id;
+    document.getElementById('modalTitle').textContent = '編輯記錄';
+    document.getElementById('txDate').value   = tx.date;
+    document.getElementById('txAmount').value = tx.amount;
+    document.getElementById('txNote').value   = tx.note;
+    setType(tx.type);
+    const sel = document.getElementById('txCategory');
+    sel.dataset.selected = tx.category;
+    sel.value = tx.category;
+    document.getElementById('modalOverlay').classList.add('show');
+    setTimeout(() => document.getElementById('modal').classList.add('show'), 10);
+  }
+
+  function submitTransaction() {
+    const amount = Number(document.getElementById('txAmount').value);
+    if (!amount) { alert('請輸入金額'); return; }
+    const data = {
+      date:     document.getElementById('txDate').value,
+      type:     currentTxType,
+      amount:   amount,
+      category: document.getElementById('txCategory').value,
+      note:     document.getElementById('txNote').value,
+    };
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitStatus').textContent = '送出中...';
+    const onSuccess = function() {
+      document.getElementById('submitBtn').disabled = false;
+      closeModal();
+      loadAll();
+    };
+    const onFail = function(err) {
+      document.getElementById('submitBtn').disabled = false;
+      document.getElementById('submitStatus').textContent = '❌ ' + err;
+    };
+    if (editingId) {
+      google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail)
+        .updateTransaction(editingId, data);
+    } else {
+      google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail)
+        .addTransaction(data);
+    }
+  }
+
+  function deleteItem(id) {
+    if (!confirm('確定要刪除？')) return;
+    google.script.run
+      .withSuccessHandler(function() {
+        document.getElementById('detailPanel').innerHTML = '';
+        loadAll();
+      })
+      .withFailureHandler(err => alert('刪除失敗：' + err))
+      .deleteTransaction(id);
+  }
+
+  loadAll();
+</script>
+</body>
+</html>
