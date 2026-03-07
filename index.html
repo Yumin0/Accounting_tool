@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>記帳工具 - SheetDB 版</title>
+  <style>
+    /* 這裡保留你原本所有的 CSS 樣式，不做變動 */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, Arial, sans-serif; background: white; color: #1C1C1E; font-size: 16px; }
+    .header { background: #1E3A5F; color: white; padding: 16px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 20px; }
+    .month-nav { display: flex; align-items: center; gap: 12px; }
+    .month-nav button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    .month-nav span { font-size: 16px; font-weight: bold; min-width: 80px; text-align: center; }
+    .summary { display: flex; gap: 8px; padding: 12px 16px; background: white; border-bottom: 1px solid #E2E8F0; }
+    .summary-card { flex: 1; text-align: center; padding: 8px 4px; border-radius: 8px; background: #F8FAFC; }
+    .summary-card .label { font-size: 14px; color: #6B7280; margin-bottom: 4px; }
+    .summary-card .value { font-size: 18px; font-weight: bold; }
+    .value.expense { color: #EF4444; }
+    .value.income  { color: #22C55E; }
+    .value.saving  { color: #3B82F6; }
+    .calendar { padding: 0 12px 8px; background: white; }
+    .month-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 8px 0 4px; border-bottom: 1px solid #E5E5EA; }
+    .month-weekday { text-align: center; font-size: 14px; color: #8E8E93; font-weight: 600; }
+    .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .week-row-line { grid-column: 1 / -1; height: 1px; background: #E5E5EA; }
+    .month-day { min-height: 80px; padding: 8px 4px 4px; background: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid #f0f0f0; }
+    .month-day.empty-cell { cursor: default; }
+    .month-day.future { color: #C7C7CC; }
+    .d-num { font-size: 16px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .month-day.today .d-num { background: #ef4345; color: white; font-weight: bold; }
+    .d-content { width: 100%; margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+    .d-exp { font-size: 10px; background: #FECACA; color: #EF4444; border-radius: 4px; text-align: center; }
+    .d-inc { font-size: 10px; background: #BBF7D0; color: #16A34A; border-radius: 4px; text-align: center; }
+    .detail-panel { background: white; border-radius: 12px; margin: 8px 12px; border: 1px solid #E5E5EA; }
+    .detail-header { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #F1F5F9; }
+    .detail-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #F1F5F9; }
+    .di-icon { font-size: 20px; width: 30px; }
+    .di-info { flex: 1; }
+    .di-cat { font-size: 14px; font-weight: bold; }
+    .di-meta { font-size: 12px; color: #888; }
+    .di-amt { font-weight: bold; }
+    .di-amt.income { color: #22C55E; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; }
+    .modal-overlay.show { display: block; }
+    .modal { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; }
+    .modal.show { transform: translateY(0); }
+    .form-row { margin-bottom: 12px; }
+    .form-row label { display: block; font-size: 13px; color: #6B7280; }
+    .form-row input, .form-row select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+    .type-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .type-tab { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: white; cursor: pointer; text-align: center; }
+    .type-tab.active-expense { background: #FEF2F2; border-color: #EF4444; color: #EF4444; }
+    .type-tab.active-income  { background: #F0FDF4; border-color: #22C55E; color: #22C55E; }
+    .btn-submit { width: 100%; padding: 14px; background: #3B82F6; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+    .btn-cancel { width: 100%; margin-top: 10px; background: none; border: none; color: #888; cursor: pointer; }
+    .btn-sm { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; background: white; font-size: 12px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>📒 記帳工具</h1>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">◀</button>
+      <span id="monthLabel"></span>
+      <button onclick="changeMonth(1)">▶</button>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="summary-card"><div class="label">本月支出</div><div class="value expense" id="totalExpense">$0</div></div>
+    <div class="summary-card"><div class="label">本月收入</div><div class="value income" id="totalIncome">$0</div></div>
+    <div class="summary-card"><div class="label">可儲蓄</div><div class="value saving" id="totalSaving">$0</div></div>
+  </div>
+
+  <div class="calendar">
+    <div class="month-weekdays">
+      <div class="month-weekday">一</div><div class="month-weekday">二</div><div class="month-weekday">三</div>
+      <div class="month-weekday">四</div><div class="month-weekday">五</div><div class="month-weekday">六</div>
+      <div class="month-weekday">日</div>
+    </div>
+    <div class="month-grid" id="monthGrid"></div>
+  </div>
+
+  <div id="detailPanel"></div>
+
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+  <div class="modal" id="modal">
+    <div id="modalTitle" style="font-weight:bold; margin-bottom:15px;">新增記錄</div>
+    <div class="type-tabs">
+      <button class="type-tab active-expense" id="tabExpense" onclick="setType('expense')">💸 支出</button>
+      <button class="type-tab" id="tabIncome"  onclick="setType('income')">💰 收入</button>
+    </div>
+    <div class="form-row"><label>日期</label><input id="txDate" type="date"></div>
+    <div class="form-row"><label>金額</label><input id="txAmount" type="number" inputmode="numeric"></div>
+    <div class="form-row"><label>分類</label><select id="txCategory"></select></div>
+    <div class="form-row"><label>備註</label><input id="txNote" type="text"></div>
+    <button class="btn-submit" id="submitBtn" onclick="submitTransaction()">✅ 確認記錄</button>
+    <button class="btn-cancel" onclick="closeModal()">取消</button>
+  </div>
+
+  <div style="position:fixed;bottom:24px;right:20px;">
+    <button onclick="openModal(null)" style="width:56px;height:56px;border-radius:50%;background:#3B82F6;color:white;border:none;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.2);">＋</button>
+  </div>
+
+<script>
+  // === 設定區 ===
+  const API_BASE = 'https://sheetdb.io/api/v1/n30ch368ejenc'; // 請替換成你的 SheetDB API URL
+  // === === === ===
+
+  let currentYear = new Date().getFullYear();
+  let currentMonth = new Date().getMonth() + 1;
+  let allCategories = [];
+  let allTxData = [];
+  let editingId = null;
+  let currentTxType = 'expense';
+
+  function getMonthStr() { return currentYear + '-' + String(currentMonth).padStart(2, '0'); }
+  function formatDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+  async function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+    if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
+    document.getElementById('detailPanel').innerHTML = '';
+    await loadAll();
+  }
+
+  // 初始化載入
+  async function loadAll() {
+    document.getElementById('monthLabel').textContent = getMonthStr();
+    
+    try {
+      // 1. 載入分類 (從 categories 分頁)
+      const catRes = await fetch(`${API_BASE}?sheet=categories`);
+      allCategories = await catRes.json();
+      updateCategorySelect();
+
+      // 2. 載入當月所有帳目 (從 transactions 分頁)
+      // 為了簡化，我們先抓全部，然後在前端篩選月份
+      const txRes = await fetch(`${API_BASE}?sheet=transactions`);
+      const rawData = await txRes.json();
+      
+      const mStr = getMonthStr();
+      allTxData = rawData.filter(tx => tx.date.startsWith(mStr));
+
+      updateSummary();
+      renderMonthView();
+    } catch (err) {
+      console.error("載入失敗", err);
+    }
+  }
+
+  function updateSummary() {
+    let exp = 0, inc = 0;
+    allTxData.forEach(tx => {
+      if (tx.type === 'expense') exp += Number(tx.amount);
+      else inc += Number(tx.amount);
+    });
+    document.getElementById('totalExpense').textContent = '$' + exp.toLocaleString();
+    document.getElementById('totalIncome').textContent  = '$' + inc.toLocaleString();
+    document.getElementById('totalSaving').textContent  = '$' + (inc - exp).toLocaleString();
+  }
+
+  function renderMonthView() {
+    const today = formatDate(new Date());
+    const firstDay = new Date(currentYear, currentMonth - 1, 1);
+    const lastDay  = new Date(currentYear, currentMonth, 0);
+    const offset = (firstDay.getDay() === 0) ? 6 : firstDay.getDay() - 1;
+    
+    let html = '';
+    let cells = [];
+
+    for (let i = 0; i < offset; i++) cells.push('<div class="month-day empty-cell"><div class="d-num"></div></div>');
+
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const dateStr = getMonthStr() + '-' + String(day).padStart(2,'0');
+      const isToday = dateStr === today;
+      const dayTx = allTxData.filter(tx => tx.date === dateStr);
+      const dayExp = dayTx.filter(tx => tx.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+      const dayInc = dayTx.filter(tx => tx.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+
+      let cls = 'month-day' + (isToday ? ' today' : '');
+      let cell = `<div class="${cls}" onclick="handleDayClick('${dateStr}')">
+        <div class="d-num">${day}</div>
+        <div class="d-content">
+          ${dayExp > 0 ? `<div class="d-exp">-$${dayExp}</div>` : ''}
+          ${dayInc > 0 ? `<div class="d-inc">+$${dayInc}</div>` : ''}
+        </div>
+      </div>`;
+      cells.push(cell);
+    }
+
+    cells.forEach((c, idx) => {
+      if (idx > 0 && idx % 7 === 0) html += '<div class="week-row-line"></div>';
+      html += c;
+    });
+    document.getElementById('monthGrid').innerHTML = html;
+  }
+
+  function handleDayClick(dateStr) {
+    const dayTx = allTxData.filter(tx => tx.date === dateStr);
+    if (dayTx.length === 0) openModal(dateStr);
+    else showDayDetail(dateStr, dayTx);
+  }
+
+  function showDayDetail(dateStr, dayTx) {
+    const panel = document.getElementById('detailPanel');
+    const catMap = {};
+    allCategories.forEach(c => { catMap[c.name] = c.icon; });
+
+    let html = `<div class="detail-panel">
+      <div class="detail-header">
+        <div style="font-weight:bold">📅 ${dateStr}</div>
+        <div>
+          <button class="btn-sm" onclick="openModal('${dateStr}')">＋ 新增</button>
+          <button class="btn-sm" onclick="document.getElementById('detailPanel').innerHTML=''">✕</button>
+        </div>
+      </div>`;
+
+    dayTx.forEach(tx => {
+      const icon = catMap[tx.category] || '📦';
+      html += `<div class="detail-item">
+        <div class="di-icon">${icon}</div>
+        <div class="di-info">
+          <div class="di-cat">${tx.category}</div>
+          <div class="di-meta">${tx.note || ''}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="di-amt ${tx.type==='income'?'income':''}">$${tx.amount}</div>
+          <div style="margin-top:4px">
+            <button class="btn-sm" onclick="editItem('${tx.id}')">改</button>
+            <button class="btn-sm" style="color:red" onclick="deleteItem('${tx.id}')">刪</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    panel.innerHTML = html + '</div>';
+    panel.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function openModal(dateStr) {
+    editingId = null;
+    document.getElementById('txDate').value = dateStr || formatDate(new Date());
+    document.getElementById('txAmount').value = '';
+    document.getElementById('txNote').value = '';
+    document.getElementById('modalOverlay').classList.add('show');
+    document.getElementById('modal').classList.add('show');
+    setType('expense');
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+    document.getElementById('modalOverlay').classList.remove('show');
+  }
+
+  function setType(type) {
+    currentTxType = type;
+    document.getElementById('tabExpense').className = 'type-tab' + (type === 'expense' ? ' active-expense' : '');
+    document.getElementById('tabIncome').className = 'type-tab' + (type === 'income' ? ' active-income' : '');
+    updateCategorySelect();
+  }
+
+  function updateCategorySelect() {
+    const sel = document.getElementById('txCategory');
+    sel.innerHTML = allCategories
+      .filter(c => c.type === currentTxType)
+      .map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`)
+      .join('');
+  }
+
+  async function submitTransaction() {
+    const amount = document.getElementById('txAmount').value;
+    if (!amount) return alert("請輸入金額");
+
+    const data = {
+      id: editingId || Date.now().toString(), // 如果是新增，產生一個唯一 ID
+      date: document.getElementById('txDate').value,
+      type: currentTxType,
+      category: document.getElementById('txCategory').value,
+      amount: amount,
+      note: document.getElementById('txNote').value
+    };
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerText = "傳送中...";
+
+    try {
+      if (editingId) {
+        // 更新 (使用 PATCH)
+        await fetch(`${API_BASE}/id/${editingId}?sheet=transactions`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: data })
+        });
+      } else {
+        // 新增 (使用 POST)
+        await fetch(`${API_BASE}?sheet=transactions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: [data] })
+        });
+      }
+      closeModal();
+      await loadAll();
+    } catch (err) {
+      alert("儲存失敗");
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "✅ 確認記錄";
+    }
+  }
+
+  async function editItem(id) {
+    const tx = allTxData.find(t => t.id == id);
+    if (!tx) return;
+    editingId = id;
+    document.getElementById('txDate').value = tx.date;
+    document.getElementById('txAmount').value = tx.amount;
+    document.getElementById('txNote').value = tx.note;
+    setType(tx.type);
+    document.getElementById('txCategory').value = tx.category;
+    document.getElementById('modalOverlay').classList.add('show');
+    document.getElementById('modal').classList.add('show');
+  }
+
+  async function deleteItem(id) {
+    if (!confirm("確定刪除？")) return;
+    try {
+      await fetch(`${API_BASE}/id/${id}?sheet=transactions`, { method: 'DELETE' });
+      document.getElementById('detailPanel').innerHTML = '';
+      await loadAll();
+    } catch (err) {
+      alert("刪除失敗");
+    }
+  }
+
+  loadAll();
+</script>
+</body>
+</html>
