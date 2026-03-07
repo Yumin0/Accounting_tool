@@ -59,6 +59,18 @@
     .category-btns { display: flex; gap: 6px; flex-wrap: nowrap; }
     .cat-btn { flex: 1; padding: 8px 4px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; text-align: center; white-space: nowrap; }
     .cat-btn.active { background: #EFF6FF; border-color: #3B82F6; color: #3B82F6; font-weight: bold; }
+    .goals-section { padding: 12px 12px 90px; background: #F8FAFC; }
+    .goals-title { font-size: 16px; font-weight: bold; color: #1E3A5F; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .goal-card { background: white; border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #E5E5EA; }
+    .goal-name { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
+    .goal-deadline { font-size: 12px; color: #888; margin-bottom: 8px; }
+    .goal-progress-wrap { background: #F1F5F9; border-radius: 20px; height: 10px; margin-bottom: 6px; overflow: hidden; }
+    .goal-progress-bar { height: 10px; border-radius: 20px; background: #3B82F6; transition: width 0.4s ease; }
+    .goal-progress-bar.done { background: #22C55E; }
+    .goal-amounts { display: flex; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 10px; }
+    .goal-deposit-btn { width: 100%; padding: 8px; background: #EFF6FF; color: #3B82F6; border: 1px solid #BFDBFE; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
+    .goal-deposit-btn:active { background: #DBEAFE; }
+    .btn-add-goal { padding: 6px 12px; background: #3B82F6; color: white; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -89,6 +101,35 @@
 
   <div id="detailPanel"></div>
 
+  <div class="goals-section">
+    <div class="goals-title">
+      <span>🎯 存錢目標</span>
+      <button class="btn-add-goal" onclick="openGoalModal()">＋ 新增目標</button>
+    </div>
+    <div id="goalsList"></div>
+  </div>
+
+  <!-- 存入金額 Modal -->
+  <div class="modal-overlay" id="depositOverlay" onclick="closeDepositModal()"></div>
+  <div class="modal" id="depositModal">
+    <div style="font-weight:bold;margin-bottom:15px;">💰 本月存入</div>
+    <div id="depositGoalName" style="color:#555;margin-bottom:12px;font-size:14px;"></div>
+    <div class="form-row"><label>存入金額</label><input id="depositAmount" type="number" inputmode="numeric" placeholder="輸入金額"></div>
+    <button class="btn-submit" id="depositSubmitBtn" onclick="submitDeposit()">✅ 確認存入</button>
+    <button class="btn-cancel" onclick="closeDepositModal()">取消</button>
+  </div>
+
+  <!-- 新增目標 Modal -->
+  <div class="modal-overlay" id="goalOverlay" onclick="closeGoalModal()"></div>
+  <div class="modal" id="goalModal">
+    <div style="font-weight:bold;margin-bottom:15px;">🎯 新增存錢目標</div>
+    <div class="form-row"><label>目標名稱</label><input id="goalName" type="text" placeholder="例：日本旅遊基金"></div>
+    <div class="form-row"><label>目標金額</label><input id="goalTarget" type="number" inputmode="numeric" placeholder="輸入金額"></div>
+    <div class="form-row"><label>預計達成日期</label><input id="goalDeadline" type="date"></div>
+    <button class="btn-submit" id="goalSubmitBtn" onclick="submitGoal()">✅ 確認建立</button>
+    <button class="btn-cancel" onclick="closeGoalModal()">取消</button>
+  </div>
+
   <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
   <div class="modal" id="modal">
     <div id="modalTitle" style="font-weight:bold; margin-bottom:15px;">新增記錄</div>
@@ -117,8 +158,10 @@
   let currentMonth = new Date().getMonth() + 1;
   let allCategories = [];
   let allTxData = [];
+  let allGoals = [];
   let editingId = null;
   let currentTxType = 'expense';
+  let depositingGoalId = null;
 
   function getMonthStr() { return currentYear + '-' + String(currentMonth).padStart(2, '0'); }
   function formatDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
@@ -145,12 +188,17 @@
       // 為了簡化，我們先抓全部，然後在前端篩選月份
       const txRes = await fetch(`${API_BASE}?sheet=transactions`);
       const rawData = await txRes.json();
-      
+
       const mStr = getMonthStr();
       allTxData = rawData.filter(tx => tx.date.startsWith(mStr));
 
+      // 3. 載入存錢目標 (從 goals 分頁)
+      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      allGoals = await goalsRes.json();
+
       updateSummary();
       renderMonthView();
+      renderGoals();
     } catch (err) {
       console.error("載入失敗", err);
     }
@@ -343,6 +391,124 @@
       await loadAll();
     } catch (err) {
       alert("刪除失敗");
+    }
+  }
+
+  // === 存錢目標 ===
+  function renderGoals() {
+    const list = document.getElementById('goalsList');
+    const active = allGoals.filter(g => g.status === 'active');
+    if (active.length === 0) {
+      list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">尚無存錢目標，點上方＋新增</div>';
+      return;
+    }
+    list.innerHTML = active.map(g => {
+      const saved = Number(g.saved_amount) || 0;
+      const target = Number(g.target_amount) || 1;
+      const pct = Math.min(100, Math.round(saved / target * 100));
+      const done = pct >= 100;
+      return `<div class="goal-card">
+        <div class="goal-name">${g.name}</div>
+        <div class="goal-deadline">📅 目標日期：${g.deadline}</div>
+        <div class="goal-progress-wrap">
+          <div class="goal-progress-bar${done ? ' done' : ''}" style="width:${pct}%"></div>
+        </div>
+        <div class="goal-amounts">
+          <span>已存 $${saved.toLocaleString()}</span>
+          <span>${pct}%／目標 $${target.toLocaleString()}</span>
+        </div>
+        ${done
+          ? '<div style="text-align:center;color:#22C55E;font-weight:bold;padding:6px 0;">🎉 目標達成！</div>'
+          : `<button class="goal-deposit-btn" onclick="openDepositModal('${g.id}','${g.name}',${saved})">💰 本月存入</button>`
+        }
+      </div>`;
+    }).join('');
+  }
+
+  function openDepositModal(goalId, goalName, currentSaved) {
+    depositingGoalId = goalId;
+    document.getElementById('depositGoalName').textContent = `目標：${goalName}（已存 $${Number(currentSaved).toLocaleString()}）`;
+    document.getElementById('depositAmount').value = '';
+    document.getElementById('depositOverlay').classList.add('show');
+    document.getElementById('depositModal').classList.add('show');
+  }
+
+  function closeDepositModal() {
+    document.getElementById('depositModal').classList.remove('show');
+    document.getElementById('depositOverlay').classList.remove('show');
+    depositingGoalId = null;
+  }
+
+  async function submitDeposit() {
+    const amount = Number(document.getElementById('depositAmount').value);
+    if (!amount || amount <= 0) return alert("請輸入有效金額");
+    const goal = allGoals.find(g => g.id === depositingGoalId);
+    if (!goal) return;
+    const newSaved = (Number(goal.saved_amount) || 0) + amount;
+    const btn = document.getElementById('depositSubmitBtn');
+    btn.disabled = true; btn.innerText = "傳送中...";
+    try {
+      await fetch(`${API_BASE}/id/${depositingGoalId}?sheet=goals`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { saved_amount: newSaved } })
+      });
+      closeDepositModal();
+      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      allGoals = await goalsRes.json();
+      renderGoals();
+    } catch (err) {
+      alert("儲存失敗");
+    } finally {
+      btn.disabled = false; btn.innerText = "✅ 確認存入";
+    }
+  }
+
+  function openGoalModal() {
+    document.getElementById('goalName').value = '';
+    document.getElementById('goalTarget').value = '';
+    document.getElementById('goalDeadline').value = '';
+    document.getElementById('goalOverlay').classList.add('show');
+    document.getElementById('goalModal').classList.add('show');
+  }
+
+  function closeGoalModal() {
+    document.getElementById('goalModal').classList.remove('show');
+    document.getElementById('goalOverlay').classList.remove('show');
+  }
+
+  async function submitGoal() {
+    const name = document.getElementById('goalName').value.trim();
+    const target = document.getElementById('goalTarget').value;
+    const deadline = document.getElementById('goalDeadline').value;
+    if (!name) return alert("請輸入目標名稱");
+    if (!target) return alert("請輸入目標金額");
+    if (!deadline) return alert("請選擇目標日期");
+    const data = {
+      id: 'goal_' + Date.now(),
+      name,
+      target_amount: target,
+      saved_amount: 0,
+      deadline,
+      created_at: formatDate(new Date()),
+      status: 'active'
+    };
+    const btn = document.getElementById('goalSubmitBtn');
+    btn.disabled = true; btn.innerText = "傳送中...";
+    try {
+      await fetch(`${API_BASE}?sheet=goals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [data] })
+      });
+      closeGoalModal();
+      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      allGoals = await goalsRes.json();
+      renderGoals();
+    } catch (err) {
+      alert("建立失敗");
+    } finally {
+      btn.disabled = false; btn.innerText = "✅ 確認建立";
     }
   }
 
