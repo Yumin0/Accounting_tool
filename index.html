@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>記帳工具 - SheetDB 版</title>
+  <title>記帳工具</title>
   <style>
     /* 這裡保留你原本所有的 CSS 樣式，不做變動 */
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -238,8 +238,40 @@
 
 <script>
   // === 設定區 ===
-  const API_BASE = 'https://sheetdb.io/api/v1/n30ch368ejenc'; // 請替換成你的 SheetDB API URL
+  // 將下方 API_BASE 換成你的 Google Apps Script 網頁應用程式網址
+  // 部署方式請參考 gas_api.gs 檔案頂端的說明
+  const API_BASE = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec'; // ← 替換成你的 GAS 網址
   // === === === ===
+
+  // apiFetch：將 PATCH / DELETE 轉為 POST（Google Apps Script 只支援 GET / POST）
+  async function apiFetch(url, options = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    if (method === 'GET') return fetch(url, options);
+
+    // 從網址取出 ?sheet=... 參數
+    const qIdx = url.indexOf('?');
+    const sheet = qIdx >= 0 ? new URLSearchParams(url.slice(qIdx + 1)).get('sheet') : null;
+
+    if (method === 'PATCH' || method === 'DELETE') {
+      // 從路徑 /id/ID_VALUE 取出 id
+      const idMatch = url.match(/\/id\/([^?]+)/);
+      const id = idMatch ? idMatch[1] : null;
+      const bodyData = options.body ? JSON.parse(options.body) : {};
+      return fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _method: method, sheet, id, data: bodyData.data })
+      });
+    }
+
+    // POST
+    const bodyData = options.body ? JSON.parse(options.body) : {};
+    return fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _method: 'POST', sheet, ...bodyData })
+    });
+  }
 
   let currentYear = new Date().getFullYear();
   let currentMonth = new Date().getMonth() + 1;
@@ -270,24 +302,24 @@
 
     try {
       // 1. 載入分類 (從 categories 分頁)
-      const catRes = await fetch(`${API_BASE}?sheet=categories`);
+      const catRes = await apiFetch(`${API_BASE}?sheet=categories`);
       allCategories = await catRes.json();
       updateCategorySelect();
 
       // 2. 載入當月所有帳目 (從 transactions 分頁)
-      const txRes = await fetch(`${API_BASE}?sheet=transactions`);
+      const txRes = await apiFetch(`${API_BASE}?sheet=transactions`);
       const rawData = await txRes.json();
 
       const mStr = getMonthStr();
       allTxData = rawData.filter(tx => tx.date.startsWith(mStr));
 
       // 3. 載入存錢目標 (從 goals 分頁)
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      const goalsRes = await apiFetch(`${API_BASE}?sheet=goals`);
       allGoals = await goalsRes.json();
 
       // 4. 載入快捷備註 (從 note_shortcuts 分頁)
       try {
-        const scRes = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+        const scRes = await apiFetch(`${API_BASE}?sheet=note_shortcuts`);
         allNoteShortcuts = await scRes.json();
       } catch(e) { allNoteShortcuts = []; }
 
@@ -449,13 +481,13 @@
 
     try {
       if (editingId) {
-        await fetch(`${API_BASE}/id/${editingId}?sheet=transactions`, {
+        await apiFetch(`${API_BASE}/id/${editingId}?sheet=transactions`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: data })
         });
       } else {
-        await fetch(`${API_BASE}?sheet=transactions`, {
+        await apiFetch(`${API_BASE}?sheet=transactions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: [data] })
@@ -488,7 +520,7 @@
   async function deleteItem(id) {
     if (!confirm("確定刪除？")) return;
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=transactions`, { method: 'DELETE' });
+      await apiFetch(`${API_BASE}/id/${id}?sheet=transactions`, { method: 'DELETE' });
       document.getElementById('detailPanel').innerHTML = '';
       await loadAll();
     } catch (err) {
@@ -581,7 +613,7 @@
     const btn = document.getElementById('depositSubmitBtn');
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
-      await fetch(`${API_BASE}/id/${depositingGoalId}?sheet=goals`, {
+      await apiFetch(`${API_BASE}/id/${depositingGoalId}?sheet=goals`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: { saved_amount: newSaved } })
@@ -593,13 +625,13 @@
         amount: amount,
         saved_date: formatDate(new Date())
       };
-      await fetch(`${API_BASE}?sheet=savings_logs`, {
+      await apiFetch(`${API_BASE}?sheet=savings_logs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: [logData] })
       });
       closeDepositModal();
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      const goalsRes = await apiFetch(`${API_BASE}?sheet=goals`);
       allGoals = await goalsRes.json();
       renderGoals();
     } catch (err) {
@@ -707,12 +739,12 @@
     const deadline = document.getElementById('edit-goal-deadline-' + id).value;
     if (!name || !target || !deadline) return alert("請填寫所有欄位");
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=goals`, {
+      await apiFetch(`${API_BASE}/id/${id}?sheet=goals`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: { name, target_amount: target, deadline } })
       });
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      const goalsRes = await apiFetch(`${API_BASE}?sheet=goals`);
       allGoals = await goalsRes.json();
       renderGoals();
       renderEditorGoalsList();
@@ -738,7 +770,7 @@
     const btn = document.getElementById('editorGoalSubmitBtn');
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
-      await fetch(`${API_BASE}?sheet=goals`, {
+      await apiFetch(`${API_BASE}?sheet=goals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: [data] })
@@ -746,7 +778,7 @@
       document.getElementById('editorGoalName').value = '';
       document.getElementById('editorGoalTarget').value = '';
       document.getElementById('editorGoalDeadline').value = '';
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      const goalsRes = await apiFetch(`${API_BASE}?sheet=goals`);
       allGoals = await goalsRes.json();
       renderGoals();
       renderEditorGoalsList();
@@ -760,8 +792,8 @@
   async function deleteGoal(id) {
     if (!confirm("確定刪除此目標？")) return;
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=goals`, { method: 'DELETE' });
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      await apiFetch(`${API_BASE}/id/${id}?sheet=goals`, { method: 'DELETE' });
+      const goalsRes = await apiFetch(`${API_BASE}?sheet=goals`);
       allGoals = await goalsRes.json();
       renderGoals();
       renderEditorGoalsList();
@@ -818,12 +850,12 @@
     const name = document.getElementById('edit-cat-name-' + id).value.trim();
     if (!name) return alert("請輸入分類名稱");
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=categories`, {
+      await apiFetch(`${API_BASE}/id/${id}?sheet=categories`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: { icon, name } })
       });
-      const catRes = await fetch(`${API_BASE}?sheet=categories`);
+      const catRes = await apiFetch(`${API_BASE}?sheet=categories`);
       allCategories = await catRes.json();
       updateCategorySelect();
       renderEditorCatList();
@@ -836,14 +868,14 @@
     if (!name) return alert("請輸入分類名稱");
     const data = { id: 'cat_' + Date.now(), name, type: currentEditorCatTab, icon };
     try {
-      await fetch(`${API_BASE}?sheet=categories`, {
+      await apiFetch(`${API_BASE}?sheet=categories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: [data] })
       });
       document.getElementById('editorCatIcon').value = '';
       document.getElementById('editorCatName').value = '';
-      const catRes = await fetch(`${API_BASE}?sheet=categories`);
+      const catRes = await apiFetch(`${API_BASE}?sheet=categories`);
       allCategories = await catRes.json();
       updateCategorySelect();
       renderEditorCatList();
@@ -853,8 +885,8 @@
   async function deleteCategory(id) {
     if (!confirm("確定刪除此分類？")) return;
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=categories`, { method: 'DELETE' });
-      const catRes = await fetch(`${API_BASE}?sheet=categories`);
+      await apiFetch(`${API_BASE}/id/${id}?sheet=categories`, { method: 'DELETE' });
+      const catRes = await apiFetch(`${API_BASE}?sheet=categories`);
       allCategories = await catRes.json();
       updateCategorySelect();
       renderEditorCatList();
@@ -912,12 +944,12 @@
     const category = document.getElementById('edit-sc-cat-' + id).value;
     if (!text) return alert("請輸入快捷字詞");
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, {
+      await apiFetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: { text, category } })
       });
-      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+      const res = await apiFetch(`${API_BASE}?sheet=note_shortcuts`);
       allNoteShortcuts = await res.json();
       renderEditorShortcutList();
     } catch(e) { alert("儲存失敗"); }
@@ -928,13 +960,13 @@
     const category = document.getElementById('editorNewShortcutCat').value;
     if (!text) return alert("請輸入快捷字詞");
     try {
-      await fetch(`${API_BASE}?sheet=note_shortcuts`, {
+      await apiFetch(`${API_BASE}?sheet=note_shortcuts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: [{ id: 'sc_' + Date.now(), text, category }] })
       });
       document.getElementById('editorNewShortcutText').value = '';
-      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+      const res = await apiFetch(`${API_BASE}?sheet=note_shortcuts`);
       allNoteShortcuts = await res.json();
       renderEditorShortcutList();
       populateShortcutCatSelect('editorNewShortcutCat', category);
@@ -943,8 +975,8 @@
 
   async function deleteShortcutFromEditor(id) {
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, { method: 'DELETE' });
-      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+      await apiFetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, { method: 'DELETE' });
+      const res = await apiFetch(`${API_BASE}?sheet=note_shortcuts`);
       allNoteShortcuts = await res.json();
       renderEditorShortcutList();
     } catch(e) { alert("刪除失敗"); }
