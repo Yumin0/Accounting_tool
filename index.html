@@ -643,14 +643,57 @@
       const saved = Number(g.saved_amount) || 0;
       const target = Number(g.target_amount) || 1;
       const pct = Math.min(100, Math.round(saved / target * 100));
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #E5E5EA;border-radius:10px;margin-bottom:8px;background:white;">
-        <div>
-          <div style="font-weight:bold;font-size:14px;">${g.name}</div>
-          <div style="font-size:12px;color:#888;">已存 $${saved.toLocaleString()} / $${target.toLocaleString()} (${pct}%)</div>
+      return `<div id="goal-row-${g.id}" style="border:1px solid #E5E5EA;border-radius:10px;margin-bottom:8px;background:white;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;">
+          <div>
+            <div style="font-weight:bold;font-size:14px;">${g.name}</div>
+            <div style="font-size:12px;color:#888;">已存 $${saved.toLocaleString()} / $${target.toLocaleString()} (${pct}%) · ${g.deadline}</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="editGoal('${g.id}')" style="background:none;border:none;color:#3B82F6;cursor:pointer;font-size:16px;padding:4px;">✏️</button>
+            <button onclick="deleteGoal('${g.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:16px;padding:4px;">🗑️</button>
+          </div>
         </div>
-        <button onclick="deleteGoal('${g.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:18px;padding:4px;">🗑️</button>
       </div>`;
     }).join('');
+  }
+
+  function editGoal(id) {
+    const g = allGoals.find(g => g.id === id);
+    if (!g) return;
+    const row = document.getElementById('goal-row-' + id);
+    row.innerHTML = `
+      <div style="padding:10px 12px;">
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <input id="edit-goal-name-${id}" value="${g.name}" placeholder="目標名稱" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;width:100%;">
+          <div style="display:flex;gap:6px;">
+            <input id="edit-goal-target-${id}" type="number" value="${g.target_amount}" placeholder="目標金額" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+            <input id="edit-goal-deadline-${id}" type="date" value="${g.deadline}" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="saveGoalEdit('${id}')" style="flex:1;padding:8px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">✅ 儲存</button>
+            <button onclick="renderEditorGoalsList()" style="flex:1;padding:8px;background:#F1F5F9;color:#555;border:none;border-radius:8px;cursor:pointer;font-size:13px;">取消</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function saveGoalEdit(id) {
+    const name = document.getElementById('edit-goal-name-' + id).value.trim();
+    const target = document.getElementById('edit-goal-target-' + id).value;
+    const deadline = document.getElementById('edit-goal-deadline-' + id).value;
+    if (!name || !target || !deadline) return alert("請填寫所有欄位");
+    try {
+      await fetch(`${API_BASE}/id/${id}?sheet=goals`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { name, target_amount: target, deadline } })
+      });
+      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      allGoals = await goalsRes.json();
+      renderGoals();
+      renderEditorGoalsList();
+    } catch(e) { alert("儲存失敗"); }
   }
 
   async function submitGoalFromEditor() {
@@ -718,11 +761,50 @@
       return;
     }
     list.innerHTML = cats.map(c =>
-      `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #E5E5EA;border-radius:10px;margin-bottom:8px;background:white;">
-        <span style="font-size:15px;">${c.icon} ${c.name}</span>
-        <button onclick="deleteCategory('${c.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:18px;padding:4px;">🗑️</button>
+      `<div id="cat-row-${c.id}" style="border:1px solid #E5E5EA;border-radius:10px;margin-bottom:8px;background:white;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;">
+          <span style="font-size:15px;">${c.icon} ${c.name}</span>
+          <div style="display:flex;gap:6px;">
+            <button onclick="editCategory('${c.id}')" style="background:none;border:none;color:#3B82F6;cursor:pointer;font-size:16px;padding:4px;">✏️</button>
+            <button onclick="deleteCategory('${c.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:16px;padding:4px;">🗑️</button>
+          </div>
+        </div>
       </div>`
     ).join('');
+  }
+
+  function editCategory(id) {
+    const c = allCategories.find(c => c.id === id);
+    if (!c) return;
+    const row = document.getElementById('cat-row-' + id);
+    row.innerHTML = `
+      <div style="padding:10px 12px;">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+          <input id="edit-cat-icon-${id}" value="${c.icon}" placeholder="😀" style="width:52px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:18px;text-align:center;">
+          <input id="edit-cat-name-${id}" value="${c.name}" placeholder="分類名稱" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="saveCategoryEdit('${id}')" style="flex:1;padding:8px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">✅ 儲存</button>
+          <button onclick="renderEditorCatList()" style="flex:1;padding:8px;background:#F1F5F9;color:#555;border:none;border-radius:8px;cursor:pointer;font-size:13px;">取消</button>
+        </div>
+      </div>`;
+  }
+
+  async function saveCategoryEdit(id) {
+    const icon = document.getElementById('edit-cat-icon-' + id).value.trim() || '📦';
+    const name = document.getElementById('edit-cat-name-' + id).value.trim();
+    if (!name) return alert("請輸入分類名稱");
+    try {
+      await fetch(`${API_BASE}/id/${id}?sheet=categories`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { icon, name } })
+      });
+      const catRes = await fetch(`${API_BASE}?sheet=categories`);
+      allCategories = await catRes.json();
+      updateCategorySelect();
+      renderEditorCatList();
+    } catch(e) { alert("儲存失敗"); }
   }
 
   async function addCategory() {
@@ -764,11 +846,40 @@
       return;
     }
     list.innerHTML = allNoteShortcuts.map(s =>
-      `<span style="display:flex;align-items:center;gap:4px;background:#F1F5F9;border-radius:20px;padding:5px 10px;font-size:14px;">
-        ${s.text}
-        <button onclick="deleteShortcutFromEditor('${s.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:12px;padding:0 2px;line-height:1;">✕</button>
-      </span>`
+      `<div id="sc-row-${s.id}" style="display:inline-flex;align-items:center;gap:4px;background:#F1F5F9;border-radius:20px;padding:5px 10px;font-size:14px;">
+        <span>${s.text}</span>
+        <button onclick="editShortcut('${s.id}')" style="background:none;border:none;color:#3B82F6;cursor:pointer;font-size:11px;padding:0 2px;line-height:1;">✏️</button>
+        <button onclick="deleteShortcutFromEditor('${s.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:11px;padding:0 2px;line-height:1;">✕</button>
+      </div>`
     ).join('');
+  }
+
+  function editShortcut(id) {
+    const s = allNoteShortcuts.find(s => s.id === id);
+    if (!s) return;
+    const row = document.getElementById('sc-row-' + id);
+    row.style.borderRadius = '10px';
+    row.style.padding = '6px 8px';
+    row.innerHTML = `
+      <input id="edit-sc-text-${id}" value="${s.text}" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:120px;">
+      <button onclick="saveShortcutEdit('${id}')" style="background:#3B82F6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;padding:4px 8px;white-space:nowrap;">✅</button>
+      <button onclick="renderEditorShortcutList()" style="background:#F1F5F9;color:#555;border:none;border-radius:6px;cursor:pointer;font-size:12px;padding:4px 6px;">✕</button>`;
+  }
+
+  async function saveShortcutEdit(id) {
+    const text = document.getElementById('edit-sc-text-' + id).value.trim();
+    if (!text) return alert("請輸入快捷字詞");
+    try {
+      await fetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { text } })
+      });
+      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+      allNoteShortcuts = await res.json();
+      renderEditorShortcutList();
+      renderNoteChips();
+    } catch(e) { alert("儲存失敗"); }
   }
 
   async function addShortcutFromEditor() {
