@@ -31,8 +31,8 @@
     .d-num { font-size: 16px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
     .month-day.today .d-num { background: #ef4345; color: white; font-weight: bold; }
     .d-content { width: 100%; margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
-    .d-exp { font-size: 16px; background: #FECACA; color: #EF4444; border-radius: 4px; text-align: center; }
-    .d-inc { font-size: 16px; background: #BBF7D0; color: #16A34A; border-radius: 4px; text-align: center; }
+    .d-exp { font-size: 14px; background: #FECACA; color: #EF4444; border-radius: 4px; text-align: center; }
+    .d-inc { font-size: 14px; background: #BBF7D0; color: #16A34A; border-radius: 4px; text-align: center; }
     .detail-panel { background: white; border-radius: 12px; margin: 8px 12px; border: 1px solid #E5E5EA; }
     .detail-header { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #F1F5F9; }
     .detail-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #F1F5F9; }
@@ -71,6 +71,9 @@
     .goal-deposit-btn { width: 100%; padding: 8px; background: #EFF6FF; color: #3B82F6; border: 1px solid #BFDBFE; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
     .goal-deposit-btn:active { background: #DBEAFE; }
     .btn-add-goal { padding: 6px 12px; background: #3B82F6; color: white; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .note-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .note-chip { padding: 5px 12px; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 14px; cursor: pointer; color: #374151; white-space: nowrap; }
+    .note-chip.active { background: #EFF6FF; border-color: #3B82F6; color: #3B82F6; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -130,6 +133,18 @@
     <button class="btn-cancel" onclick="closeGoalModal()">取消</button>
   </div>
 
+  <!-- 快捷備註管理 Modal -->
+  <div class="modal-overlay" id="shortcutOverlay" onclick="closeShortcutModal()"></div>
+  <div class="modal" id="shortcutModal">
+    <div style="font-weight:bold;margin-bottom:15px;">✏️ 管理快捷備註</div>
+    <div id="shortcutList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;min-height:32px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <input id="newShortcutText" type="text" placeholder="輸入新快捷字詞" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:16px;">
+      <button onclick="addShortcut()" style="padding:10px 16px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;white-space:nowrap;">新增</button>
+    </div>
+    <button class="btn-cancel" onclick="closeShortcutModal()">關閉</button>
+  </div>
+
   <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
   <div class="modal" id="modal">
     <div id="modalTitle" style="font-weight:bold; margin-bottom:15px;">新增記錄</div>
@@ -140,7 +155,14 @@
     <div class="form-row"><label>日期</label><input id="txDate" type="date"></div>
     <div class="form-row"><label>金額</label><input id="txAmount" type="number" inputmode="numeric"></div>
     <div class="form-row"><label>分類</label><div class="category-btns" id="txCategory"></div></div>
-    <div class="form-row"><label>備註</label><input id="txNote" type="text"></div>
+    <div class="form-row">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <label style="margin-bottom:0">備註</label>
+        <button onclick="openShortcutModal()" style="font-size:12px;color:#6B7280;background:none;border:none;cursor:pointer;padding:0;">✏️ 管理快捷</button>
+      </div>
+      <input id="txNote" type="text">
+      <div class="note-chips" id="noteChips"></div>
+    </div>
     <button class="btn-submit" id="submitBtn" onclick="submitTransaction()">✅ 確認記錄</button>
     <button class="btn-cancel" onclick="closeModal()">取消</button>
   </div>
@@ -159,12 +181,14 @@
   let allCategories = [];
   let allTxData = [];
   let allGoals = [];
+  let allNoteShortcuts = [];
   let editingId = null;
   let currentTxType = 'expense';
   let depositingGoalId = null;
 
   function getMonthStr() { return currentYear + '-' + String(currentMonth).padStart(2, '0'); }
   function formatDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function fmtAmt(n) { return n >= 10000 ? Math.round(n / 1000) + 'k' : n.toLocaleString(); }
 
   async function changeMonth(delta) {
     currentMonth += delta;
@@ -196,9 +220,16 @@
       const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
       allGoals = await goalsRes.json();
 
+      // 4. 載入快捷備註 (從 note_shortcuts 分頁)
+      try {
+        const scRes = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+        allNoteShortcuts = await scRes.json();
+      } catch(e) { allNoteShortcuts = []; }
+
       updateSummary();
       renderMonthView();
       renderGoals();
+      renderNoteChips();
     } catch (err) {
       console.error("載入失敗", err);
     }
@@ -237,8 +268,8 @@
       let cell = `<div class="${cls}" onclick="handleDayClick('${dateStr}')">
         <div class="d-num">${day}</div>
         <div class="d-content">
-          ${dayExp > 0 ? `<div class="d-exp">-$${dayExp}</div>` : ''}
-          ${dayInc > 0 ? `<div class="d-inc">+$${dayInc}</div>` : ''}
+          ${dayExp > 0 ? `<div class="d-exp">${fmtAmt(dayExp)}</div>` : ''}
+          ${dayInc > 0 ? `<div class="d-inc">${fmtAmt(dayInc)}</div>` : ''}
         </div>
       </div>`;
       cells.push(cell);
@@ -297,6 +328,7 @@
     document.getElementById('txDate').value = dateStr || formatDate(new Date());
     document.getElementById('txAmount').value = '';
     document.getElementById('txNote').value = '';
+    document.querySelectorAll('#noteChips .note-chip').forEach(b => b.classList.remove('active'));
     document.getElementById('modalOverlay').classList.add('show');
     document.getElementById('modal').classList.add('show');
     setType('expense');
@@ -377,6 +409,7 @@
     document.getElementById('txDate').value = tx.date;
     document.getElementById('txAmount').value = tx.amount;
     document.getElementById('txNote').value = tx.note;
+    document.querySelectorAll('#noteChips .note-chip').forEach(b => b.classList.remove('active'));
     setType(tx.type);
     updateCategorySelect(tx.category);
     document.getElementById('modalOverlay').classList.add('show');
@@ -392,6 +425,79 @@
     } catch (err) {
       alert("刪除失敗");
     }
+  }
+
+  // === 快捷備註 ===
+  function renderNoteChips() {
+    const container = document.getElementById('noteChips');
+    if (!container) return;
+    container.innerHTML = allNoteShortcuts.map(s =>
+      `<button class="note-chip" onclick="selectNoteChip(this,'${s.text.replace(/'/g, "\\'")}')">${s.text}</button>`
+    ).join('');
+  }
+
+  function selectNoteChip(btn, text) {
+    const noteInput = document.getElementById('txNote');
+    if (btn.classList.contains('active')) {
+      btn.classList.remove('active');
+      noteInput.value = '';
+    } else {
+      document.querySelectorAll('#noteChips .note-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      noteInput.value = text;
+    }
+  }
+
+  function openShortcutModal() {
+    renderShortcutList();
+    document.getElementById('shortcutOverlay').classList.add('show');
+    document.getElementById('shortcutModal').classList.add('show');
+  }
+
+  function closeShortcutModal() {
+    document.getElementById('shortcutModal').classList.remove('show');
+    document.getElementById('shortcutOverlay').classList.remove('show');
+  }
+
+  function renderShortcutList() {
+    const list = document.getElementById('shortcutList');
+    if (!allNoteShortcuts.length) {
+      list.innerHTML = '<span style="color:#aaa;font-size:14px;">尚無快捷備註</span>';
+      return;
+    }
+    list.innerHTML = allNoteShortcuts.map(s =>
+      `<span style="display:flex;align-items:center;gap:4px;background:#F1F5F9;border-radius:20px;padding:5px 10px;font-size:14px;">
+        ${s.text}
+        <button onclick="deleteShortcut('${s.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:12px;padding:0 2px;line-height:1;">✕</button>
+      </span>`
+    ).join('');
+  }
+
+  async function addShortcut() {
+    const text = document.getElementById('newShortcutText').value.trim();
+    if (!text) return;
+    try {
+      await fetch(`${API_BASE}?sheet=note_shortcuts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [{ id: 'sc_' + Date.now(), text }] })
+      });
+      document.getElementById('newShortcutText').value = '';
+      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+      allNoteShortcuts = await res.json();
+      renderShortcutList();
+      renderNoteChips();
+    } catch(e) { alert("新增失敗"); }
+  }
+
+  async function deleteShortcut(id) {
+    try {
+      await fetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+      allNoteShortcuts = await res.json();
+      renderShortcutList();
+      renderNoteChips();
+    } catch(e) { alert("刪除失敗"); }
   }
 
   // === 存錢目標 ===
