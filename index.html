@@ -70,10 +70,21 @@
     .goal-amounts { display: flex; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 10px; }
     .goal-deposit-btn { width: 100%; padding: 8px; background: #EFF6FF; color: #3B82F6; border: 1px solid #BFDBFE; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
     .goal-deposit-btn:active { background: #DBEAFE; }
-    .btn-add-goal { padding: 6px 12px; background: #3B82F6; color: white; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
     .note-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .note-chip { padding: 5px 12px; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 14px; cursor: pointer; color: #374151; white-space: nowrap; }
     .note-chip.active { background: #EFF6FF; border-color: #3B82F6; color: #3B82F6; font-weight: bold; }
+
+    /* 統一資料管理 Modal — 放在最上層 z-index */
+    .sheet-editor-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; }
+    .sheet-editor-overlay.show { display: block; }
+    .sheet-editor-modal { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 201; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+    .sheet-editor-modal.show { transform: translateY(0); }
+    .editor-menu-item { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #E5E5EA; border-radius: 12px; margin-bottom: 10px; cursor: pointer; background: white; width: 100%; text-align: left; }
+    .editor-menu-item:active { background: #F8FAFC; }
+    .editor-cat-tab { flex: 1; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; }
+    .editor-cat-tab.active-expense { background: #FEF2F2; border: 1px solid #EF4444; color: #EF4444; }
+    .editor-cat-tab.active-income { background: #F0FDF4; border: 1px solid #22C55E; color: #22C55E; }
+    .editor-cat-tab.inactive { background: white; border: 1px solid #ddd; color: #888; }
   </style>
 </head>
 <body>
@@ -107,7 +118,6 @@
   <div class="goals-section">
     <div class="goals-title">
       <span>🎯 存錢目標</span>
-      <button class="btn-add-goal" onclick="openGoalModal()">＋ 新增目標</button>
     </div>
     <div id="goalsList"></div>
   </div>
@@ -122,29 +132,7 @@
     <button class="btn-cancel" onclick="closeDepositModal()">取消</button>
   </div>
 
-  <!-- 新增目標 Modal -->
-  <div class="modal-overlay" id="goalOverlay" onclick="closeGoalModal()"></div>
-  <div class="modal" id="goalModal">
-    <div style="font-weight:bold;margin-bottom:15px;">🎯 新增存錢目標</div>
-    <div class="form-row"><label>目標名稱</label><input id="goalName" type="text" placeholder="例：日本旅遊基金"></div>
-    <div class="form-row"><label>目標金額</label><input id="goalTarget" type="number" inputmode="numeric" placeholder="輸入金額"></div>
-    <div class="form-row"><label>預計達成日期</label><input id="goalDeadline" type="date"></div>
-    <button class="btn-submit" id="goalSubmitBtn" onclick="submitGoal()">✅ 確認建立</button>
-    <button class="btn-cancel" onclick="closeGoalModal()">取消</button>
-  </div>
-
-  <!-- 快捷備註管理 Modal -->
-  <div class="modal-overlay" id="shortcutOverlay" onclick="closeShortcutModal()"></div>
-  <div class="modal" id="shortcutModal">
-    <div style="font-weight:bold;margin-bottom:15px;">✏️ 管理快捷備註</div>
-    <div id="shortcutList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;min-height:32px;"></div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <input id="newShortcutText" type="text" placeholder="輸入新快捷字詞" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:16px;">
-      <button onclick="addShortcut()" style="padding:10px 16px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;white-space:nowrap;">新增</button>
-    </div>
-    <button class="btn-cancel" onclick="closeShortcutModal()">關閉</button>
-  </div>
-
+  <!-- 新增記錄 Modal -->
   <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
   <div class="modal" id="modal">
     <div id="modalTitle" style="font-weight:bold; margin-bottom:15px;">新增記錄</div>
@@ -156,10 +144,7 @@
     <div class="form-row"><label>金額</label><input id="txAmount" type="number" inputmode="numeric"></div>
     <div class="form-row"><label>分類</label><div class="category-btns" id="txCategory"></div></div>
     <div class="form-row">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <label style="margin-bottom:0">備註</label>
-        <button onclick="openShortcutModal()" style="font-size:12px;color:#6B7280;background:none;border:none;cursor:pointer;padding:0;">✏️ 管理快捷</button>
-      </div>
+      <label style="margin-bottom:4px;">備註</label>
       <input id="txNote" type="text">
       <div class="note-chips" id="noteChips"></div>
     </div>
@@ -167,8 +152,85 @@
     <button class="btn-cancel" onclick="closeModal()">取消</button>
   </div>
 
-  <div style="position:fixed;bottom:24px;right:20px;">
-    <button onclick="openModal(null)" style="width:56px;height:56px;border-radius:50%;background:#3B82F6;color:white;border:none;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.2);">＋</button>
+  <!-- 統一資料管理 Modal（最外層，z-index 最高）-->
+  <div class="sheet-editor-overlay" id="sheetEditorOverlay" onclick="closeSheetEditor()"></div>
+  <div class="sheet-editor-modal" id="sheetEditorModal">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0;">
+      <button id="sheetEditorBack" onclick="showEditorView('menu')" style="display:none;background:none;border:none;font-size:20px;cursor:pointer;padding:4px;line-height:1;">◀</button>
+      <div id="sheetEditorTitle" style="font-weight:bold;font-size:16px;">管理資料</div>
+    </div>
+
+    <!-- 主選單 -->
+    <div id="editorViewMenu" style="overflow-y:auto;flex:1;">
+      <button class="editor-menu-item" onclick="showEditorView('goals')">
+        <span style="font-size:24px;">🎯</span>
+        <div style="flex:1;">
+          <div style="font-weight:bold;margin-bottom:2px;">存錢目標</div>
+          <div style="font-size:13px;color:#888;">新增、查看存錢目標</div>
+        </div>
+        <span style="color:#C7C7CC;">▶</span>
+      </button>
+      <button class="editor-menu-item" onclick="showEditorView('categories')">
+        <span style="font-size:24px;">🗂️</span>
+        <div style="flex:1;">
+          <div style="font-weight:bold;margin-bottom:2px;">分類管理</div>
+          <div style="font-size:13px;color:#888;">新增、刪除收支分類</div>
+        </div>
+        <span style="color:#C7C7CC;">▶</span>
+      </button>
+      <button class="editor-menu-item" onclick="showEditorView('shortcuts')">
+        <span style="font-size:24px;">✏️</span>
+        <div style="flex:1;">
+          <div style="font-weight:bold;margin-bottom:2px;">快捷備註</div>
+          <div style="font-size:13px;color:#888;">管理備註快捷字詞</div>
+        </div>
+        <span style="color:#C7C7CC;">▶</span>
+      </button>
+    </div>
+
+    <!-- 存錢目標子視圖 -->
+    <div id="editorViewGoals" style="display:none;overflow-y:auto;flex:1;">
+      <div id="editorGoalsList" style="margin-bottom:14px;"></div>
+      <div style="background:#F8FAFC;border-radius:12px;padding:14px;">
+        <div style="font-weight:bold;margin-bottom:12px;font-size:14px;color:#6B7280;">＋ 新增存錢目標</div>
+        <div class="form-row"><label>目標名稱</label><input id="editorGoalName" type="text" placeholder="例：日本旅遊基金"></div>
+        <div class="form-row"><label>目標金額</label><input id="editorGoalTarget" type="number" inputmode="numeric" placeholder="輸入金額"></div>
+        <div class="form-row"><label>預計達成日期</label><input id="editorGoalDeadline" type="date"></div>
+        <button class="btn-submit" id="editorGoalSubmitBtn" onclick="submitGoalFromEditor()">✅ 確認建立</button>
+      </div>
+    </div>
+
+    <!-- 分類管理子視圖 -->
+    <div id="editorViewCategories" style="display:none;overflow-y:auto;flex:1;">
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button id="editorCatTabExpense" class="editor-cat-tab active-expense" onclick="switchEditorCatTab('expense')">💸 支出</button>
+        <button id="editorCatTabIncome" class="editor-cat-tab inactive" onclick="switchEditorCatTab('income')">💰 收入</button>
+      </div>
+      <div id="editorCatList" style="margin-bottom:14px;"></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="editorCatIcon" type="text" placeholder="😀" style="width:56px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:18px;text-align:center;">
+        <input id="editorCatName" type="text" placeholder="分類名稱" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:16px;">
+        <button onclick="addCategory()" style="padding:10px 14px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;font-size:14px;">新增</button>
+      </div>
+    </div>
+
+    <!-- 快捷備註子視圖 -->
+    <div id="editorViewShortcuts" style="display:none;overflow-y:auto;flex:1;">
+      <div id="editorShortcutList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;min-height:32px;"></div>
+      <div style="display:flex;gap:8px;">
+        <input id="editorNewShortcutText" type="text" placeholder="輸入新快捷字詞" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:16px;">
+        <button onclick="addShortcutFromEditor()" style="padding:10px 16px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;white-space:nowrap;">新增</button>
+      </div>
+    </div>
+
+    <button class="btn-cancel" onclick="closeSheetEditor()" style="flex-shrink:0;margin-top:14px;">關閉</button>
+  </div>
+
+  <!-- FAB 按鈕區 -->
+  <div style="position:fixed;bottom:24px;right:20px;display:flex;flex-direction:column;gap:12px;align-items:flex-end;">
+    <button onclick="openSheetEditor()" style="width:48px;height:48px;border-radius:50%;background:#6B7280;color:white;border:none;font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,0.2);cursor:pointer;">⚙️</button>
+    <button onclick="openModal(null)" style="width:56px;height:56px;border-radius:50%;background:#3B82F6;color:white;border:none;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.2);cursor:pointer;">＋</button>
   </div>
 
 <script>
@@ -185,6 +247,7 @@
   let editingId = null;
   let currentTxType = 'expense';
   let depositingGoalId = null;
+  let currentEditorCatTab = 'expense';
 
   function getMonthStr() { return currentYear + '-' + String(currentMonth).padStart(2, '0'); }
   function formatDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
@@ -201,7 +264,7 @@
   // 初始化載入
   async function loadAll() {
     document.getElementById('monthLabel').textContent = getMonthStr();
-    
+
     try {
       // 1. 載入分類 (從 categories 分頁)
       const catRes = await fetch(`${API_BASE}?sheet=categories`);
@@ -209,7 +272,6 @@
       updateCategorySelect();
 
       // 2. 載入當月所有帳目 (從 transactions 分頁)
-      // 為了簡化，我們先抓全部，然後在前端篩選月份
       const txRes = await fetch(`${API_BASE}?sheet=transactions`);
       const rawData = await txRes.json();
 
@@ -251,7 +313,7 @@
     const firstDay = new Date(currentYear, currentMonth - 1, 1);
     const lastDay  = new Date(currentYear, currentMonth, 0);
     const offset = (firstDay.getDay() === 0) ? 6 : firstDay.getDay() - 1;
-    
+
     let html = '';
     let cells = [];
 
@@ -364,7 +426,7 @@
     if (!amount) return alert("請輸入金額");
 
     const data = {
-      id: editingId || Date.now().toString(), // 如果是新增，產生一個唯一 ID
+      id: editingId || Date.now().toString(),
       date: document.getElementById('txDate').value,
       type: currentTxType,
       category: document.querySelector('#txCategory .cat-btn.active')?.dataset.value || '',
@@ -378,14 +440,12 @@
 
     try {
       if (editingId) {
-        // 更新 (使用 PATCH)
         await fetch(`${API_BASE}/id/${editingId}?sheet=transactions`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: data })
         });
       } else {
-        // 新增 (使用 POST)
         await fetch(`${API_BASE}?sheet=transactions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -448,58 +508,6 @@
     }
   }
 
-  function openShortcutModal() {
-    renderShortcutList();
-    document.getElementById('shortcutOverlay').classList.add('show');
-    document.getElementById('shortcutModal').classList.add('show');
-  }
-
-  function closeShortcutModal() {
-    document.getElementById('shortcutModal').classList.remove('show');
-    document.getElementById('shortcutOverlay').classList.remove('show');
-  }
-
-  function renderShortcutList() {
-    const list = document.getElementById('shortcutList');
-    if (!allNoteShortcuts.length) {
-      list.innerHTML = '<span style="color:#aaa;font-size:14px;">尚無快捷備註</span>';
-      return;
-    }
-    list.innerHTML = allNoteShortcuts.map(s =>
-      `<span style="display:flex;align-items:center;gap:4px;background:#F1F5F9;border-radius:20px;padding:5px 10px;font-size:14px;">
-        ${s.text}
-        <button onclick="deleteShortcut('${s.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:12px;padding:0 2px;line-height:1;">✕</button>
-      </span>`
-    ).join('');
-  }
-
-  async function addShortcut() {
-    const text = document.getElementById('newShortcutText').value.trim();
-    if (!text) return;
-    try {
-      await fetch(`${API_BASE}?sheet=note_shortcuts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: [{ id: 'sc_' + Date.now(), text }] })
-      });
-      document.getElementById('newShortcutText').value = '';
-      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
-      allNoteShortcuts = await res.json();
-      renderShortcutList();
-      renderNoteChips();
-    } catch(e) { alert("新增失敗"); }
-  }
-
-  async function deleteShortcut(id) {
-    try {
-      await fetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, { method: 'DELETE' });
-      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
-      allNoteShortcuts = await res.json();
-      renderShortcutList();
-      renderNoteChips();
-    } catch(e) { alert("刪除失敗"); }
-  }
-
   // === 存錢目標 ===
   function renderGoals() {
     const list = document.getElementById('goalsList');
@@ -510,10 +518,10 @@
         const pctB = Number(b.saved_amount) / (Number(b.target_amount) || 1);
         const doneA = pctA >= 1 ? 1 : 0;
         const doneB = pctB >= 1 ? 1 : 0;
-        return doneA - doneB; // 未達成排前面
+        return doneA - doneB;
       });
     if (active.length === 0) {
-      list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">尚無存錢目標，點上方＋新增</div>';
+      list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">尚無存錢目標，點右下角 ⚙️ 新增</div>';
       return;
     }
     list.innerHTML = active.map(g => {
@@ -562,13 +570,11 @@
     const btn = document.getElementById('depositSubmitBtn');
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
-      // 更新 goals 的 saved_amount 總計
       await fetch(`${API_BASE}/id/${depositingGoalId}?sheet=goals`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: { saved_amount: newSaved } })
       });
-      // 寫入 savings_logs 明細（每筆存入的日期與金額）
       const logData = {
         id: 'log_' + Date.now(),
         goal_id: depositingGoalId,
@@ -592,23 +598,65 @@
     }
   }
 
-  function openGoalModal() {
-    document.getElementById('goalName').value = '';
-    document.getElementById('goalTarget').value = '';
-    document.getElementById('goalDeadline').value = '';
-    document.getElementById('goalOverlay').classList.add('show');
-    document.getElementById('goalModal').classList.add('show');
+  // === 統一資料管理 Editor ===
+  function openSheetEditor() {
+    showEditorView('menu');
+    document.getElementById('sheetEditorOverlay').classList.add('show');
+    document.getElementById('sheetEditorModal').classList.add('show');
   }
 
-  function closeGoalModal() {
-    document.getElementById('goalModal').classList.remove('show');
-    document.getElementById('goalOverlay').classList.remove('show');
+  function closeSheetEditor() {
+    document.getElementById('sheetEditorModal').classList.remove('show');
+    document.getElementById('sheetEditorOverlay').classList.remove('show');
   }
 
-  async function submitGoal() {
-    const name = document.getElementById('goalName').value.trim();
-    const target = document.getElementById('goalTarget').value;
-    const deadline = document.getElementById('goalDeadline').value;
+  function showEditorView(view) {
+    const views = ['menu', 'goals', 'categories', 'shortcuts'];
+    views.forEach(v => {
+      const el = document.getElementById('editorView' + v.charAt(0).toUpperCase() + v.slice(1));
+      if (el) el.style.display = 'none';
+    });
+
+    const backBtn = document.getElementById('sheetEditorBack');
+    backBtn.style.display = view === 'menu' ? 'none' : 'block';
+
+    const titles = { menu: '管理資料', goals: '存錢目標', categories: '分類管理', shortcuts: '快捷備註' };
+    document.getElementById('sheetEditorTitle').textContent = titles[view] || '管理資料';
+
+    const target = document.getElementById('editorView' + view.charAt(0).toUpperCase() + view.slice(1));
+    if (target) target.style.display = '';
+
+    if (view === 'goals') renderEditorGoalsList();
+    if (view === 'categories') { currentEditorCatTab = 'expense'; switchEditorCatTab('expense'); }
+    if (view === 'shortcuts') renderEditorShortcutList();
+  }
+
+  // --- 存錢目標子視圖 ---
+  function renderEditorGoalsList() {
+    const list = document.getElementById('editorGoalsList');
+    const active = allGoals.filter(g => g.status === 'active');
+    if (!active.length) {
+      list.innerHTML = '<div style="color:#aaa;font-size:14px;margin-bottom:8px;">尚無存錢目標</div>';
+      return;
+    }
+    list.innerHTML = active.map(g => {
+      const saved = Number(g.saved_amount) || 0;
+      const target = Number(g.target_amount) || 1;
+      const pct = Math.min(100, Math.round(saved / target * 100));
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #E5E5EA;border-radius:10px;margin-bottom:8px;background:white;">
+        <div>
+          <div style="font-weight:bold;font-size:14px;">${g.name}</div>
+          <div style="font-size:12px;color:#888;">已存 $${saved.toLocaleString()} / $${target.toLocaleString()} (${pct}%)</div>
+        </div>
+        <button onclick="deleteGoal('${g.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:18px;padding:4px;">🗑️</button>
+      </div>`;
+    }).join('');
+  }
+
+  async function submitGoalFromEditor() {
+    const name = document.getElementById('editorGoalName').value.trim();
+    const target = document.getElementById('editorGoalTarget').value;
+    const deadline = document.getElementById('editorGoalDeadline').value;
     if (!name) return alert("請輸入目標名稱");
     if (!target) return alert("請輸入目標金額");
     if (!deadline) return alert("請選擇目標日期");
@@ -621,7 +669,7 @@
       created_at: formatDate(new Date()),
       status: 'active'
     };
-    const btn = document.getElementById('goalSubmitBtn');
+    const btn = document.getElementById('editorGoalSubmitBtn');
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
       await fetch(`${API_BASE}?sheet=goals`, {
@@ -629,15 +677,125 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: [data] })
       });
-      closeGoalModal();
+      document.getElementById('editorGoalName').value = '';
+      document.getElementById('editorGoalTarget').value = '';
+      document.getElementById('editorGoalDeadline').value = '';
       const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
       allGoals = await goalsRes.json();
       renderGoals();
+      renderEditorGoalsList();
     } catch (err) {
       alert("建立失敗");
     } finally {
       btn.disabled = false; btn.innerText = "✅ 確認建立";
     }
+  }
+
+  async function deleteGoal(id) {
+    if (!confirm("確定刪除此目標？")) return;
+    try {
+      await fetch(`${API_BASE}/id/${id}?sheet=goals`, { method: 'DELETE' });
+      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
+      allGoals = await goalsRes.json();
+      renderGoals();
+      renderEditorGoalsList();
+    } catch(e) { alert("刪除失敗"); }
+  }
+
+  // --- 分類管理子視圖 ---
+  function switchEditorCatTab(tab) {
+    currentEditorCatTab = tab;
+    document.getElementById('editorCatTabExpense').className = 'editor-cat-tab ' + (tab === 'expense' ? 'active-expense' : 'inactive');
+    document.getElementById('editorCatTabIncome').className = 'editor-cat-tab ' + (tab === 'income' ? 'active-income' : 'inactive');
+    renderEditorCatList();
+  }
+
+  function renderEditorCatList() {
+    const list = document.getElementById('editorCatList');
+    const cats = allCategories.filter(c => c.type === currentEditorCatTab);
+    if (!cats.length) {
+      list.innerHTML = '<div style="color:#aaa;font-size:14px;margin-bottom:8px;">尚無分類</div>';
+      return;
+    }
+    list.innerHTML = cats.map(c =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #E5E5EA;border-radius:10px;margin-bottom:8px;background:white;">
+        <span style="font-size:15px;">${c.icon} ${c.name}</span>
+        <button onclick="deleteCategory('${c.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:18px;padding:4px;">🗑️</button>
+      </div>`
+    ).join('');
+  }
+
+  async function addCategory() {
+    const icon = document.getElementById('editorCatIcon').value.trim() || '📦';
+    const name = document.getElementById('editorCatName').value.trim();
+    if (!name) return alert("請輸入分類名稱");
+    const data = { id: 'cat_' + Date.now(), name, type: currentEditorCatTab, icon };
+    try {
+      await fetch(`${API_BASE}?sheet=categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [data] })
+      });
+      document.getElementById('editorCatIcon').value = '';
+      document.getElementById('editorCatName').value = '';
+      const catRes = await fetch(`${API_BASE}?sheet=categories`);
+      allCategories = await catRes.json();
+      updateCategorySelect();
+      renderEditorCatList();
+    } catch(e) { alert("新增失敗"); }
+  }
+
+  async function deleteCategory(id) {
+    if (!confirm("確定刪除此分類？")) return;
+    try {
+      await fetch(`${API_BASE}/id/${id}?sheet=categories`, { method: 'DELETE' });
+      const catRes = await fetch(`${API_BASE}?sheet=categories`);
+      allCategories = await catRes.json();
+      updateCategorySelect();
+      renderEditorCatList();
+    } catch(e) { alert("刪除失敗"); }
+  }
+
+  // --- 快捷備註子視圖 ---
+  function renderEditorShortcutList() {
+    const list = document.getElementById('editorShortcutList');
+    if (!allNoteShortcuts.length) {
+      list.innerHTML = '<span style="color:#aaa;font-size:14px;">尚無快捷備註</span>';
+      return;
+    }
+    list.innerHTML = allNoteShortcuts.map(s =>
+      `<span style="display:flex;align-items:center;gap:4px;background:#F1F5F9;border-radius:20px;padding:5px 10px;font-size:14px;">
+        ${s.text}
+        <button onclick="deleteShortcutFromEditor('${s.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:12px;padding:0 2px;line-height:1;">✕</button>
+      </span>`
+    ).join('');
+  }
+
+  async function addShortcutFromEditor() {
+    const text = document.getElementById('editorNewShortcutText').value.trim();
+    if (!text) return;
+    try {
+      await fetch(`${API_BASE}?sheet=note_shortcuts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [{ id: 'sc_' + Date.now(), text }] })
+      });
+      document.getElementById('editorNewShortcutText').value = '';
+      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+      allNoteShortcuts = await res.json();
+      renderEditorShortcutList();
+      renderNoteChips();
+    } catch(e) { alert("新增失敗"); }
+  }
+
+  async function deleteShortcutFromEditor(id) {
+    try {
+      await fetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
+      allNoteShortcuts = await res.json();
+      renderEditorShortcutList();
+      renderNoteChips();
+    } catch(e) { alert("刪除失敗"); }
   }
 
   loadAll();
