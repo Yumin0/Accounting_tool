@@ -86,6 +86,7 @@
     .editor-cat-tab.active-income { background: #F0FDF4; border: 1px solid #22C55E; color: #22C55E; }
     .editor-cat-tab.inactive { background: white; border: 1px solid #ddd; color: #888; }
   </style>
+  <script src="https://accounts.google.com/gsi/client" onload="initAuth()" async defer></script>
 </head>
 <body>
 
@@ -230,6 +231,15 @@
     <button class="btn-cancel" onclick="closeSheetEditor()" style="flex-shrink:0;margin-top:14px;">關閉</button>
   </div>
 
+  <!-- Google 登入遮罩 -->
+  <div id="signInOverlay" style="position:fixed;inset:0;background:rgba(255,255,255,0.97);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+    <div style="font-size:52px;">📒</div>
+    <h2 style="font-size:22px;color:#1E3A5F;font-weight:700;">記帳工具</h2>
+    <p style="color:#6B7280;font-size:14px;">請登入 Google 帳號以讀寫試算表資料</p>
+    <button id="signInBtn" onclick="signIn()" style="padding:13px 28px;background:#3B82F6;color:white;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(59,130,246,0.4);">使用 Google 帳號登入</button>
+    <p id="signInStatus" style="color:#9CA3AF;font-size:13px;min-height:18px;"></p>
+  </div>
+
   <!-- FAB 按鈕區 -->
   <div style="position:fixed;bottom:24px;right:20px;display:flex;flex-direction:column;gap:12px;align-items:flex-end;">
     <button onclick="openSheetEditor()" style="width:48px;height:48px;border-radius:50%;background:#6B7280;color:white;border:none;font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,0.2);cursor:pointer;">⚙️</button>
@@ -238,39 +248,176 @@
 
 <script>
   // === 設定區 ===
-  // 將下方 API_BASE 換成你的 Google Apps Script 網頁應用程式網址
-  // 部署方式請參考 gas_api.gs 檔案頂端的說明
-  const API_BASE = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec'; // ← 替換成你的 GAS 網址
+  const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID';                   // ← 替換成你的試算表 ID
+  const CLIENT_ID      = 'YOUR_CLIENT_ID.apps.googleusercontent.com'; // ← 替換成你的 OAuth Client ID
   // === === === ===
 
-  // apiFetch：將 PATCH / DELETE 轉為 POST（Google Apps Script 只支援 GET / POST）
-  async function apiFetch(url, options = {}) {
-    const method = (options.method || 'GET').toUpperCase();
-    if (method === 'GET') return fetch(url, options);
+  const API_BASE    = '';  // 保留供 apiFetch URL 樣式解析使用（實際不發出請求）
+  const SHEETS_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+  let gToken    = null;   // access token
+  let tokenClient;
+  let gSheetMeta = {};    // { sheetName → sheetId }
 
-    // 從網址取出 ?sheet=... 參數
-    const qIdx = url.indexOf('?');
-    const sheet = qIdx >= 0 ? new URLSearchParams(url.slice(qIdx + 1)).get('sheet') : null;
+  // ── OAuth ──────────────────────────────────────────────────────────────────
+  function initAuth() {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      callback: async (resp) => {
+        if (resp.error) {
+          document.getElementById('signInStatus').textContent = '登入失敗：' + resp.error;
+          return;
+        }
+        gToken = resp.access_token;
+        document.getElementById('signInOverlay').style.display = 'none';
+        await fetchSheetMeta();
+        await loadAll();
+      }
+    });
+    // 先嘗試靜默取得 token（已授權過則自動登入）
+    tokenClient.requestAccessToken({ prompt: '' });
+  }
 
-    if (method === 'PATCH' || method === 'DELETE') {
-      // 從路徑 /id/ID_VALUE 取出 id
-      const idMatch = url.match(/\/id\/([^?]+)/);
-      const id = idMatch ? idMatch[1] : null;
-      const bodyData = options.body ? JSON.parse(options.body) : {};
-      return fetch(API_BASE, {
+  function signIn() {
+    document.getElementById('signInStatus').textContent = '登入中…';
+    tokenClient.requestAccessToken({ prompt: 'select_account' });
+  }
+
+  // ── 取得各分頁的數字 sheetId（刪除列需要用到）────────────────────────────
+  async function fetchSheetMeta() {
+    const res  = await gFetch(`${SHEETS_BASE}/${SPREADSHEET_ID}?fields=sheets.properties`);
+    const data = await res.json();
+    (data.sheets || []).forEach(s => {
+      gSheetMeta[s.properties.title] = s.properties.sheetId;
+    });
+  }
+
+  // ── 帶 Authorization header 的 fetch，token 過期自動刷新 ─────────────────
+  async function gFetch(url, opts = {}) {
+    opts.headers = { ...(opts.headers || {}), Authorization: `Bearer ${gToken}` };
+    const res = await fetch(url, opts);
+    if (res.status === 401) {
+      await new Promise((resolve, reject) => {
+        tokenClient.callback = async (resp) => {
+          if (resp.error) { reject(new Error(resp.error)); return; }
+          gToken = resp.access_token;
+          resolve();
+        };
+        tokenClient.requestAccessToken({ prompt: '' });
+      });
+      opts.headers['Authorization'] = `Bearer ${gToken}`;
+      return fetch(url, opts);
+    }
+    return res;
+  }
+
+  // ── 將欄位索引轉為欄名（A, B, …, Z, AA, …）──────────────────────────────
+  function colLetter(idx) {
+    let s = ''; idx++;
+    while (idx > 0) { s = String.fromCharCode(65 + (idx - 1) % 26) + s; idx = Math.floor((idx - 1) / 26); }
+    return s;
+  }
+
+  // ── 讀取整個分頁 → 回傳物件陣列 ─────────────────────────────────────────
+  async function sheetsGet(sheetName) {
+    const res  = await gFetch(`${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetName)}`);
+    const data = await res.json();
+    const values = data.values || [];
+    if (values.length < 2) return [];
+    const headers = values[0];
+    return values.slice(1).map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = row[i] ?? ''; });
+      return obj;
+    });
+  }
+
+  // ── 新增一列 ────────────────────────────────────────────────────────────
+  async function sheetsAppend(sheetName, rowObj) {
+    const hRes  = await gFetch(`${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetName + '!1:1')}`);
+    const hData = await hRes.json();
+    const headers = hData.values?.[0] || [];
+    const row = headers.map(h => rowObj[h] !== undefined ? rowObj[h] : '');
+    await gFetch(
+      `${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetName)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [row] }) }
+    );
+  }
+
+  // ── 依 id 欄更新一列 ─────────────────────────────────────────────────────
+  async function sheetsUpdate(sheetName, id, updateData) {
+    const res    = await gFetch(`${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetName)}`);
+    const data   = await res.json();
+    const values = data.values || [];
+    if (values.length < 2) return;
+    const headers = values[0];
+    const idCol   = headers.indexOf('id');
+    if (idCol < 0) return;
+    const rowIdx = values.findIndex((row, i) => i > 0 && String(row[idCol]) === String(id));
+    if (rowIdx < 0) return;
+
+    const updatedRow = [...values[rowIdx]];
+    while (updatedRow.length < headers.length) updatedRow.push('');
+    Object.keys(updateData).forEach(key => {
+      const col = headers.indexOf(key);
+      if (col >= 0) updatedRow[col] = updateData[key];
+    });
+    const range = `${sheetName}!A${rowIdx + 1}:${colLetter(headers.length - 1)}${rowIdx + 1}`;
+    await gFetch(
+      `${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values: [updatedRow] }) }
+    );
+  }
+
+  // ── 依 id 欄刪除一列 ─────────────────────────────────────────────────────
+  async function sheetsDelete(sheetName, id) {
+    const res    = await gFetch(`${SHEETS_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetName)}`);
+    const data   = await res.json();
+    const values = data.values || [];
+    if (values.length < 2) return;
+    const headers = values[0];
+    const idCol   = headers.indexOf('id');
+    const rowIdx  = values.findIndex((row, i) => i > 0 && String(row[idCol]) === String(id));
+    if (rowIdx < 0) return;
+    await gFetch(
+      `${SHEETS_BASE}/${SPREADSHEET_ID}:batchUpdate`,
+      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ _method: method, sheet, id, data: bodyData.data })
-      });
-    }
+        body: JSON.stringify({ requests: [{ deleteDimension: {
+          range: { sheetId: gSheetMeta[sheetName], dimension: 'ROWS', startIndex: rowIdx, endIndex: rowIdx + 1 }
+        }}] })
+      }
+    );
+  }
 
-    // POST
-    const bodyData = options.body ? JSON.parse(options.body) : {};
-    return fetch(API_BASE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ _method: 'POST', sheet, ...bodyData })
-    });
+  // ── apiFetch：保持原有呼叫介面不變 ─────────────────────────────────────
+  async function apiFetch(url, options = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    const qIdx   = url.indexOf('?');
+    const sheet  = qIdx >= 0 ? new URLSearchParams(url.slice(qIdx + 1)).get('sheet') : null;
+
+    if (method === 'GET') {
+      const data = await sheetsGet(sheet);
+      return { json: async () => data };
+    }
+    if (method === 'POST') {
+      const body = options.body ? JSON.parse(options.body) : {};
+      const rows = Array.isArray(body.data) ? body.data : [body.data];
+      for (const row of rows) await sheetsAppend(sheet, row);
+      return { json: async () => ({ created: rows.length }) };
+    }
+    const idMatch = url.match(/\/id\/([^?]+)/);
+    const id = idMatch ? idMatch[1] : null;
+    if (method === 'PATCH') {
+      const body = options.body ? JSON.parse(options.body) : {};
+      await sheetsUpdate(sheet, id, body.data);
+      return { json: async () => ({ updated: 1 }) };
+    }
+    if (method === 'DELETE') {
+      await sheetsDelete(sheet, id);
+      return { json: async () => ({ deleted: 1 }) };
+    }
   }
 
   let currentYear = new Date().getFullYear();
@@ -982,7 +1129,7 @@
     } catch(e) { alert("刪除失敗"); }
   }
 
-  loadAll();
+  // initAuth() 由 GIS 腳本載入完成後的 onload 自動呼叫
 </script>
 </body>
 </html>
