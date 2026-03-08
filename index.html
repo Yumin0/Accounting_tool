@@ -31,8 +31,8 @@
     .d-num { font-size: 16px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
     .month-day.today .d-num { background: #ef4345; color: white; font-weight: bold; }
     .d-content { width: 100%; margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
-    .d-exp { font-size: 10px; background: #FECACA; color: #EF4444; border-radius: 4px; text-align: center; }
-    .d-inc { font-size: 10px; background: #BBF7D0; color: #16A34A; border-radius: 4px; text-align: center; }
+    .d-exp { font-size: 16px; background: #FECACA; color: #EF4444; border-radius: 4px; text-align: center; }
+    .d-inc { font-size: 16px; background: #BBF7D0; color: #16A34A; border-radius: 4px; text-align: center; }
     .detail-panel { background: white; border-radius: 12px; margin: 8px 12px; border: 1px solid #E5E5EA; }
     .detail-header { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #F1F5F9; }
     .detail-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #F1F5F9; }
@@ -397,7 +397,15 @@
   // === 存錢目標 ===
   function renderGoals() {
     const list = document.getElementById('goalsList');
-    const active = allGoals.filter(g => g.status === 'active');
+    const active = allGoals
+      .filter(g => g.status === 'active')
+      .sort((a, b) => {
+        const pctA = Number(a.saved_amount) / (Number(a.target_amount) || 1);
+        const pctB = Number(b.saved_amount) / (Number(b.target_amount) || 1);
+        const doneA = pctA >= 1 ? 1 : 0;
+        const doneB = pctB >= 1 ? 1 : 0;
+        return doneA - doneB; // 未達成排前面
+      });
     if (active.length === 0) {
       list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">尚無存錢目標，點上方＋新增</div>';
       return;
@@ -448,10 +456,24 @@
     const btn = document.getElementById('depositSubmitBtn');
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
+      // 更新 goals 的 saved_amount 總計
       await fetch(`${API_BASE}/id/${depositingGoalId}?sheet=goals`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: { saved_amount: newSaved } })
+      });
+      // 寫入 savings_logs 明細（每筆存入的日期與金額）
+      const logData = {
+        id: 'log_' + Date.now(),
+        goal_id: depositingGoalId,
+        goal_name: goal.name,
+        amount: amount,
+        saved_date: formatDate(new Date())
+      };
+      await fetch(`${API_BASE}?sheet=savings_logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [logData] })
       });
       closeDepositModal();
       const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
