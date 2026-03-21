@@ -88,9 +88,12 @@
 
     /* 每日洞察 */
     .insight-section { padding: 8px 12px 0; }
-    .insight-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(102,126,234,0.35); letter-spacing: 0.5px; }
+    .insight-btn-row { display: flex; gap: 10px; }
+    .insight-btn { flex: 3; padding: 14px 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(102,126,234,0.35); letter-spacing: 0.5px; }
     .insight-btn:active { opacity: 0.88; }
     .insight-btn:disabled { opacity: 0.6; cursor: default; }
+    .insight-history-btn { flex: 2; padding: 14px 10px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; border-radius: 14px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(245,87,108,0.3); letter-spacing: 0.5px; }
+    .insight-history-btn:active { opacity: 0.88; }
     .insight-card { background: linear-gradient(135deg, #faf7ff 0%, #fff5fb 100%); border: 1px solid #e0d0f8; border-radius: 14px; padding: 16px; margin-top: 10px; }
     .insight-text { font-size: 15px; line-height: 1.75; color: #374151; white-space: pre-wrap; }
     .insight-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
@@ -138,7 +141,10 @@
 
   <!-- 每日洞察區域 -->
   <div class="insight-section">
-    <button class="insight-btn" id="insightBtn" onclick="generateTodayInsight()">✨ 今日洞察</button>
+    <div class="insight-btn-row">
+      <button class="insight-btn" id="insightBtn" onclick="generateTodayInsight()">✨ 今日洞察</button>
+      <button class="insight-history-btn" onclick="showInsightHistory()">📋 歷史紀錄</button>
+    </div>
     <div id="insightCard" style="display:none" class="insight-card">
       <div class="insight-text" id="insightText"></div>
       <div class="insight-footer">
@@ -1003,16 +1009,18 @@
     }
     const btn = document.getElementById('insightBtn');
     btn.disabled = true;
-    btn.textContent = '✨ 分析中...';
+    btn.textContent = '✨ 載入中...';
     try {
-      const res = await fetch(GAS_WEBAPP_URL + '?action=generateInsight');
+      const res = await fetch(GAS_WEBAPP_URL + '?action=getInsights');
       const data = await res.json();
-      if (data.success) {
-        document.getElementById('insightText').textContent = data.insight;
-        document.getElementById('insightTime').textContent = data.timestamp.replace('T', ' ');
+      const insights = data.insights || [];
+      if (insights.length > 0) {
+        const latest = insights[0]; // getInsights 回傳最新的在前
+        document.getElementById('insightText').textContent = latest.insight;
+        document.getElementById('insightTime').textContent = latest.timestamp.replace('T', ' ');
         document.getElementById('insightCard').style.display = 'block';
       } else {
-        alert('洞察產生失敗：' + (data.error || '未知錯誤'));
+        alert('尚無洞察紀錄\n\n請到 GAS 編輯器執行一次 setupDailyTrigger()，或手動執行 generateInsight() 產生第一筆洞察。');
       }
     } catch (err) {
       alert('連線失敗，請確認 GAS Web App URL 是否正確');

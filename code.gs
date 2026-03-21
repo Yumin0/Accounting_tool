@@ -148,7 +148,26 @@ function testCalendar() {
 // 每日洞察功能
 // ========================
 
+// 【初始設定】在 GAS 編輯器執行這個函式一次，設定每天早上 8 點自動產生洞察
+// 執行方式：在編輯器上方選 setupDailyTrigger → 點「▶ 執行」
+function setupDailyTrigger() {
+  // 清除舊的 generateInsight trigger 避免重複
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'generateInsight')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger('generateInsight')
+    .timeBased()
+    .atHour(8)
+    .everyDays(1)
+    .inTimezone('Asia/Taipei')
+    .create();
+
+  Logger.log('已設定每天早上 8 點自動產生洞察');
+}
+
 // 產生每日洞察（呼叫 Gemini API）
+// 由 Trigger 觸發執行，不從 Web App 直接呼叫（避免 OAuth 授權問題）
 function generateInsight() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('transactions');
