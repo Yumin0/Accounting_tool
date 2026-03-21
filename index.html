@@ -1003,16 +1003,18 @@
     }
     const btn = document.getElementById('insightBtn');
     btn.disabled = true;
-    btn.textContent = '✨ 分析中...';
+    btn.textContent = '✨ 載入中...';
     try {
-      const res = await fetch(GAS_WEBAPP_URL + '?action=generateInsight');
+      const res = await fetch(GAS_WEBAPP_URL + '?action=getInsights');
       const data = await res.json();
-      if (data.success) {
-        document.getElementById('insightText').textContent = data.insight;
-        document.getElementById('insightTime').textContent = data.timestamp.replace('T', ' ');
+      const insights = data.insights || [];
+      if (insights.length > 0) {
+        const latest = insights[0]; // getInsights 回傳最新的在前
+        document.getElementById('insightText').textContent = latest.insight;
+        document.getElementById('insightTime').textContent = latest.timestamp.replace('T', ' ');
         document.getElementById('insightCard').style.display = 'block';
       } else {
-        alert('洞察產生失敗：' + (data.error || '未知錯誤'));
+        alert('尚無洞察紀錄\n\n請到 GAS 編輯器執行一次 setupDailyTrigger()，或手動執行 generateInsight() 產生第一筆洞察。');
       }
     } catch (err) {
       alert('連線失敗，請確認 GAS Web App URL 是否正確');
