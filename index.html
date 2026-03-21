@@ -85,6 +85,27 @@
     .editor-cat-tab.active-expense { background: #FEF2F2; border: 1px solid #EF4444; color: #EF4444; }
     .editor-cat-tab.active-income { background: #F0FDF4; border: 1px solid #22C55E; color: #22C55E; }
     .editor-cat-tab.inactive { background: white; border: 1px solid #ddd; color: #888; }
+
+    /* 每日洞察 */
+    .insight-section { padding: 8px 12px 0; }
+    .insight-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(102,126,234,0.35); letter-spacing: 0.5px; }
+    .insight-btn:active { opacity: 0.88; }
+    .insight-btn:disabled { opacity: 0.6; cursor: default; }
+    .insight-card { background: linear-gradient(135deg, #faf7ff 0%, #fff5fb 100%); border: 1px solid #e0d0f8; border-radius: 14px; padding: 16px; margin-top: 10px; }
+    .insight-text { font-size: 15px; line-height: 1.75; color: #374151; white-space: pre-wrap; }
+    .insight-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+    .insight-time { font-size: 12px; color: #9CA3AF; }
+    .insight-history-link { font-size: 13px; color: #7C3AED; cursor: pointer; }
+    .insight-history-link:active { opacity: 0.7; }
+    /* 洞察歷史 Modal */
+    .insight-history-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; }
+    .insight-history-overlay.show { display: block; }
+    .insight-history-modal { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 75vh; display: flex; flex-direction: column; }
+    .insight-history-modal.show { transform: translateY(0); }
+    .insight-history-item { padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+    .insight-history-item:last-child { border-bottom: none; }
+    .insight-history-date { font-size: 12px; color: #9CA3AF; margin-bottom: 4px; }
+    .insight-history-text { font-size: 14px; line-height: 1.65; color: #374151; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -114,6 +135,26 @@
   </div>
 
   <div id="detailPanel"></div>
+
+  <!-- 每日洞察區域 -->
+  <div class="insight-section">
+    <button class="insight-btn" id="insightBtn" onclick="generateTodayInsight()">✨ 今日洞察</button>
+    <div id="insightCard" style="display:none" class="insight-card">
+      <div class="insight-text" id="insightText"></div>
+      <div class="insight-footer">
+        <span class="insight-time" id="insightTime"></span>
+        <span class="insight-history-link" onclick="showInsightHistory()">查看歷史紀錄 →</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 洞察歷史 Modal -->
+  <div class="insight-history-overlay" id="insightHistoryOverlay" onclick="closeInsightHistory()"></div>
+  <div class="insight-history-modal" id="insightHistoryModal">
+    <div style="font-weight:bold;font-size:16px;margin-bottom:16px;flex-shrink:0;">✨ 洞察歷史紀錄</div>
+    <div id="insightHistoryList" style="overflow-y:auto;flex:1;"></div>
+    <button class="btn-cancel" onclick="closeInsightHistory()" style="flex-shrink:0;margin-top:14px;">關閉</button>
+  </div>
 
   <div class="goals-section">
     <div class="goals-title">
@@ -239,6 +280,8 @@
 <script>
   // === 設定區 ===
   const API_BASE = 'https://sheetdb.io/api/v1/x4wslnbibmjr1'; // 請替換成你的 SheetDB API URL
+  // 請將下方填入你的 GAS Web App 部署 URL（Deploy > Manage deployments > 複製 URL）
+  const GAS_WEBAPP_URL = ''; // 例：'https://script.google.com/macros/s/AKfy.../exec'
   // === === === ===
 
   let currentYear = new Date().getFullYear();
@@ -951,6 +994,63 @@
   }
 
   loadAll();
+
+  // === 每日洞察 ===
+  async function generateTodayInsight() {
+    if (!GAS_WEBAPP_URL) {
+      alert('請先在 index.html 的 GAS_WEBAPP_URL 填入你的 GAS Web App 部署網址');
+      return;
+    }
+    const btn = document.getElementById('insightBtn');
+    btn.disabled = true;
+    btn.textContent = '✨ 分析中...';
+    try {
+      const res = await fetch(GAS_WEBAPP_URL + '?action=generateInsight');
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('insightText').textContent = data.insight;
+        document.getElementById('insightTime').textContent = data.timestamp.replace('T', ' ');
+        document.getElementById('insightCard').style.display = 'block';
+      } else {
+        alert('洞察產生失敗：' + (data.error || '未知錯誤'));
+      }
+    } catch (err) {
+      alert('連線失敗，請確認 GAS Web App URL 是否正確');
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✨ 今日洞察';
+    }
+  }
+
+  async function showInsightHistory() {
+    if (!GAS_WEBAPP_URL) return;
+    const list = document.getElementById('insightHistoryList');
+    list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">載入中...</div>';
+    document.getElementById('insightHistoryOverlay').classList.add('show');
+    document.getElementById('insightHistoryModal').classList.add('show');
+    try {
+      const res = await fetch(GAS_WEBAPP_URL + '?action=getInsights');
+      const data = await res.json();
+      const insights = data.insights || [];
+      if (!insights.length) {
+        list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">尚無洞察紀錄</div>';
+        return;
+      }
+      list.innerHTML = insights.map(item => `
+        <div class="insight-history-item">
+          <div class="insight-history-date">${item.timestamp.replace('T', ' ')}</div>
+          <div class="insight-history-text">${item.insight}</div>
+        </div>`).join('');
+    } catch (err) {
+      list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">載入失敗</div>';
+    }
+  }
+
+  function closeInsightHistory() {
+    document.getElementById('insightHistoryModal').classList.remove('show');
+    document.getElementById('insightHistoryOverlay').classList.remove('show');
+  }
 </script>
 </body>
 </html>

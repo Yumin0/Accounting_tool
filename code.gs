@@ -1,5 +1,19 @@
-// 1. 頁面進入點，回傳 HTML 給瀏覽器
-function doGet() {
+// 1. 頁面進入點，回傳 HTML 給瀏覽器；也處理 API action 請求
+function doGet(e) {
+  const action = e && e.parameter && e.parameter.action;
+
+  if (action === 'generateInsight') {
+    const result = generateInsight();
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (action === 'getInsights') {
+    const insights = getInsights();
+    return ContentService.createTextOutput(JSON.stringify({ insights: insights }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   return HtmlService.createHtmlOutputFromFile('index.html');
 }
 
@@ -38,16 +52,6 @@ function getGoals() {
   return data.slice(1).map(row => ({
     id: row[0], name: row[1], targetAmount: row[2],
     savedAmount: row[3], deadline: row[4], status: row[6]
-  }));
-}
-
-// 讀取所有分類
-function getCategories() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('categories');
-  const data = sheet.getDataRange().getValues();
-  return data.slice(1).map(row => ({
-    id: row[0], name: row[1], icon: row[2], type: row[3]
   }));
 }
 
@@ -140,8 +144,155 @@ function testCalendar() {
   Logger.log(JSON.stringify(result));
 }
 
-function testCalendar() {
-  const result = getDailyCalendarData('2026-03');
-  Logger.log(JSON.stringify(result));
+// ========================
+// 每日洞察功能
+// ========================
+
+// 產生每日洞察（呼叫 Gemini API）
+function generateInsight() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('transactions');
+  if (!sheet) return { success: false, error: '找不到 transactions 分頁' };
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return { success: false, error: '尚無交易資料，先記幾筆帳再來看看吧！' };
+
+  // 計算 10 天前的日期字串
+  const now = new Date();
+  const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+  const tenDaysAgoStr = Utilities.formatDate(tenDaysAgo, 'Asia/Taipei', 'yyyy-MM-dd');
+
+  const recentRows = data.slice(1).filter(row => {
+    const dateStr = row[1] ? row[1].toString().replace(/^'/, '') : '';
+    return dateStr >= tenDaysAgoStr && dateStr.length === 10;
+  }).map(row => ({
+    date: row[1].toString().replace(/^'/, ''),
+    type: row[2],
+    amount: Number(row[3]),
+    category: row[4] || '',
+    note: row[5] || ''
+  }));
+
+  if (recentRows.length === 0) {
+    return { success: false, error: '近10天沒有資料，先記幾筆帳再來看看吧！' };
+  }
+
+  // 讀取存錢目標
+  let goalsStr = '';
+  try {
+    const goalsSheet = ss.getSheetByName('goals');
+    if (goalsSheet) {
+      const goalsData = goalsSheet.getDataRange().getValues();
+      const activeGoals = goalsData.slice(1)
+        .filter(r => r[6] === 'active')
+        .map(r => `${r[1]}（目標 $${r[2]}，已存 $${r[3]}，截止 ${r[4]}）`);
+      if (activeGoals.length > 0) {
+        goalsStr = '\n\n目前存錢目標：' + activeGoals.join('、');
+      }
+    }
+  } catch (e) {}
+
+  // 隨機選 1-2 個分析角度
+  const angles = [
+    '花錢最多是星期幾，有沒有規律',
+    '月初 vs 月底消費差異',
+    '哪個類別最能代表這段時間的生活狀態',
+    '娛樂放鬆類（按摩/洗頭/指甲等）的消費間隔頻率',
+    '副業收入和薪水的比例',
+    '距離存錢目標還剩幾個月',
+    '哪天支出最異常',
+    '某個備註關鍵字是否頻繁出現'
+  ];
+
+  const shuffled = angles.slice().sort(() => Math.random() - 0.5);
+  const selectedAngles = shuffled.slice(0, Math.floor(Math.random() * 2) + 1);
+
+  // 整理資料摘要
+  const expenseRows = recentRows.filter(r => r.type === 'expense');
+  const incomeRows = recentRows.filter(r => r.type === 'income');
+  const totalExp = expenseRows.reduce((s, r) => s + r.amount, 0);
+  const totalInc = incomeRows.reduce((s, r) => s + r.amount, 0);
+  const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+
+  let dataSummary = `近10天交易（共 ${recentRows.length} 筆）：\n`;
+  dataSummary += `總支出 $${totalExp}，總收入 $${totalInc}\n\n明細：\n`;
+  recentRows.forEach(r => {
+    const d = new Date(r.date);
+    const dow = weekDays[d.getDay()];
+    dataSummary += `${r.date}（週${dow}）${r.type === 'expense' ? '支出' : '收入'} $${r.amount} [${r.category}]${r.note ? ' ' + r.note : ''}\n`;
+  });
+  dataSummary += goalsStr;
+
+  const prompt = `你是個很了解這個人的朋友，不是理財顧問。用繁體中文，輕鬆口吻，像在聊天一樣，不評判，不說教。
+
+${dataSummary}
+
+請從以下角度觀察：${selectedAngles.join('、')}
+
+用3句話以內，分享你觀察到的有趣現象或小發現。語氣像朋友說「欸我發現你...」或「你最近...」之類的。`;
+
+  // 呼叫 Gemini API
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!apiKey) {
+    return { success: false, error: '請先在 GAS Script Properties 設定 GEMINI_API_KEY' };
+  }
+
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 200, temperature: 0.9 }
+      }),
+      muteHttpExceptions: true
+    });
+
+    const resultJson = JSON.parse(response.getContentText());
+
+    if (resultJson.error) {
+      return { success: false, error: 'Gemini 錯誤：' + resultJson.error.message };
+    }
+
+    const insightText = (resultJson.candidates &&
+      resultJson.candidates[0] &&
+      resultJson.candidates[0].content &&
+      resultJson.candidates[0].content.parts &&
+      resultJson.candidates[0].content.parts[0] &&
+      resultJson.candidates[0].content.parts[0].text &&
+      resultJson.candidates[0].content.parts[0].text.trim())
+      || '今天沒有特別的發現，繼續保持吧 😊';
+
+    // 儲存到「洞察紀錄」分頁
+    let insightSheet = ss.getSheetByName('洞察紀錄');
+    if (!insightSheet) {
+      insightSheet = ss.insertSheet('洞察紀錄');
+      insightSheet.appendRow(['時間戳記', '洞察內容']);
+    }
+
+    const timestamp = Utilities.formatDate(now, 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss");
+    insightSheet.appendRow([timestamp, insightText]);
+
+    return { success: true, insight: insightText, timestamp: timestamp };
+
+  } catch (e) {
+    return { success: false, error: '呼叫失敗：' + e.toString() };
+  }
 }
 
+// 讀取所有洞察紀錄（最新的在前）
+function getInsights() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const insightSheet = ss.getSheetByName('洞察紀錄');
+  if (!insightSheet) return [];
+
+  const data = insightSheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+
+  return data.slice(1).reverse().map(row => ({
+    timestamp: row[0] ? row[0].toString() : '',
+    insight: row[1] ? row[1].toString() : ''
+  }));
+}
