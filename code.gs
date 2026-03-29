@@ -50,9 +50,146 @@ function getGoals() {
   const sheet = ss.getSheetByName('goals');
   const data = sheet.getDataRange().getValues();
   return data.slice(1).map(row => ({
-    id: row[0], name: row[1], targetAmount: row[2],
-    savedAmount: row[3], deadline: row[4], status: row[6]
+    id: row[0], name: row[1], target_amount: row[2],
+    saved_amount: row[3], deadline: row[4], status: row[6]
   }));
+}
+
+function addGoal(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('goals');
+  sheet.appendRow([data.id, data.name, data.target_amount, data.saved_amount, data.deadline, data.created_at, data.status]);
+  return { success: true };
+}
+
+function updateGoal(id, data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('goals');
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === id) {
+      const row = i + 1;
+      if (data.name !== undefined) sheet.getRange(row, 2).setValue(data.name);
+      if (data.target_amount !== undefined) sheet.getRange(row, 3).setValue(data.target_amount);
+      if (data.saved_amount !== undefined) sheet.getRange(row, 4).setValue(data.saved_amount);
+      if (data.deadline !== undefined) sheet.getRange(row, 5).setValue(data.deadline);
+      return { success: true };
+    }
+  }
+  return { success: false, error: '找不到 id: ' + id };
+}
+
+function deleteGoal(id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('goals');
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  return { success: false, error: '找不到 id: ' + id };
+}
+
+function addSavingsLog(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('savings_logs');
+  if (!sheet) {
+    sheet = ss.insertSheet('savings_logs');
+    sheet.appendRow(['id', 'goal_id', 'goal_name', 'amount', 'saved_date']);
+  }
+  sheet.appendRow([data.id, data.goal_id, data.goal_name, data.amount, data.saved_date]);
+  return { success: true };
+}
+
+// 分類 CRUD
+function addCategory(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('categories');
+  sheet.appendRow([data.id, data.name, data.icon, data.type]);
+  return { success: true };
+}
+
+function updateCategory(id, data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('categories');
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === id) {
+      const row = i + 1;
+      if (data.name !== undefined) sheet.getRange(row, 2).setValue(data.name);
+      if (data.icon !== undefined) sheet.getRange(row, 3).setValue(data.icon);
+      return { success: true };
+    }
+  }
+  return { success: false, error: '找不到 id: ' + id };
+}
+
+function deleteCategory(id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('categories');
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  return { success: false, error: '找不到 id: ' + id };
+}
+
+// 快捷備註 CRUD
+function getNoteShortcuts() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('note_shortcuts');
+  if (!sheet) return [];
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  return data.slice(1).map(row => ({
+    id: row[0], text: row[1], category: row[2] || ''
+  }));
+}
+
+function addNoteShortcut(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('note_shortcuts');
+  if (!sheet) {
+    sheet = ss.insertSheet('note_shortcuts');
+    sheet.appendRow(['id', 'text', 'category']);
+  }
+  sheet.appendRow([data.id, data.text, data.category || '']);
+  return { success: true };
+}
+
+function updateNoteShortcut(id, data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('note_shortcuts');
+  if (!sheet) return { success: false };
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === id) {
+      const row = i + 1;
+      if (data.text !== undefined) sheet.getRange(row, 2).setValue(data.text);
+      if (data.category !== undefined) sheet.getRange(row, 3).setValue(data.category);
+      return { success: true };
+    }
+  }
+  return { success: false, error: '找不到 id: ' + id };
+}
+
+function deleteNoteShortcut(id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('note_shortcuts');
+  if (!sheet) return { success: false };
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  return { success: false, error: '找不到 id: ' + id };
 }
 
 function addTransaction(data) {

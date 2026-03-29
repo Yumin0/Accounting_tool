@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>記帳工具 - SheetDB 版</title>
+  <title>記帳工具</title>
   <style>
     /* 這裡保留你原本所有的 CSS 樣式，不做變動 */
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -284,11 +284,15 @@
   </div>
 
 <script>
-  // === 設定區 ===
-  const API_BASE = 'https://sheetdb.io/api/v1/x4wslnbibmjr1'; // 請替換成你的 SheetDB API URL
-  // 請將下方填入你的 GAS Web App 部署 URL（Deploy > Manage deployments > 複製 URL）
-  const GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxIDAKiig0WOYJiPFZVT95MEcyEJF9_pPYmiAzSo2NiUkTj7ask7hzYyJNWaERhXH_I6A/exec'; // 例：'https://script.google.com/macros/s/AKfy.../exec'
-  // === === === ===
+  // 透過 google.script.run 呼叫 GAS 函式，包裝成 Promise
+  function gasRun(funcName, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)
+        [funcName](...args);
+    });
+  }
 
   let currentYear = new Date().getFullYear();
   let currentMonth = new Date().getMonth() + 1;
@@ -318,26 +322,19 @@
     document.getElementById('monthLabel').textContent = getMonthStr();
 
     try {
-      // 1. 載入分類 (從 categories 分頁)
-      const catRes = await fetch(`${API_BASE}?sheet=categories`);
-      allCategories = await catRes.json();
+      // 1. 載入分類
+      allCategories = await gasRun('getCategories');
       updateCategorySelect();
 
-      // 2. 載入當月所有帳目 (從 transactions 分頁)
-      const txRes = await fetch(`${API_BASE}?sheet=transactions`);
-      const rawData = await txRes.json();
+      // 2. 載入當月帳目
+      allTxData = await gasRun('getTransactions', getMonthStr());
 
-      const mStr = getMonthStr();
-      allTxData = rawData.filter(tx => tx.date.startsWith(mStr));
+      // 3. 載入存錢目標
+      allGoals = await gasRun('getGoals');
 
-      // 3. 載入存錢目標 (從 goals 分頁)
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
-      allGoals = await goalsRes.json();
-
-      // 4. 載入快捷備註 (從 note_shortcuts 分頁)
+      // 4. 載入快捷備註
       try {
-        const scRes = await fetch(`${API_BASE}?sheet=note_shortcuts`);
-        allNoteShortcuts = await scRes.json();
+        allNoteShortcuts = await gasRun('getNoteShortcuts');
       } catch(e) { allNoteShortcuts = []; }
 
       updateSummary();
@@ -498,17 +495,9 @@
 
     try {
       if (editingId) {
-        await fetch(`${API_BASE}/id/${editingId}?sheet=transactions`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: data })
-        });
+        await gasRun('updateTransaction', editingId, data);
       } else {
-        await fetch(`${API_BASE}?sheet=transactions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: [data] })
-        });
+        await gasRun('addTransaction', data);
       }
       closeModal();
       await loadAll();
@@ -537,7 +526,7 @@
   async function deleteItem(id) {
     if (!confirm("確定刪除？")) return;
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=transactions`, { method: 'DELETE' });
+      await gasRun('deleteTransaction', id);
       document.getElementById('detailPanel').innerHTML = '';
       await loadAll();
     } catch (err) {
@@ -630,26 +619,16 @@
     const btn = document.getElementById('depositSubmitBtn');
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
-      await fetch(`${API_BASE}/id/${depositingGoalId}?sheet=goals`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: { saved_amount: newSaved } })
-      });
-      const logData = {
+      await gasRun('updateGoal', depositingGoalId, { saved_amount: newSaved });
+      await gasRun('addSavingsLog', {
         id: 'log_' + Date.now(),
         goal_id: depositingGoalId,
         goal_name: goal.name,
         amount: amount,
         saved_date: formatDate(new Date())
-      };
-      await fetch(`${API_BASE}?sheet=savings_logs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: [logData] })
       });
       closeDepositModal();
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
-      allGoals = await goalsRes.json();
+      allGoals = await gasRun('getGoals');
       renderGoals();
     } catch (err) {
       alert("儲存失敗");
@@ -756,13 +735,8 @@
     const deadline = document.getElementById('edit-goal-deadline-' + id).value;
     if (!name || !target || !deadline) return alert("請填寫所有欄位");
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=goals`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: { name, target_amount: target, deadline } })
-      });
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
-      allGoals = await goalsRes.json();
+      await gasRun('updateGoal', id, { name, target_amount: target, deadline });
+      allGoals = await gasRun('getGoals');
       renderGoals();
       renderEditorGoalsList();
     } catch(e) { alert("儲存失敗"); }
@@ -787,16 +761,11 @@
     const btn = document.getElementById('editorGoalSubmitBtn');
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
-      await fetch(`${API_BASE}?sheet=goals`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: [data] })
-      });
+      await gasRun('addGoal', data);
       document.getElementById('editorGoalName').value = '';
       document.getElementById('editorGoalTarget').value = '';
       document.getElementById('editorGoalDeadline').value = '';
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
-      allGoals = await goalsRes.json();
+      allGoals = await gasRun('getGoals');
       renderGoals();
       renderEditorGoalsList();
     } catch (err) {
@@ -809,9 +778,8 @@
   async function deleteGoal(id) {
     if (!confirm("確定刪除此目標？")) return;
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=goals`, { method: 'DELETE' });
-      const goalsRes = await fetch(`${API_BASE}?sheet=goals`);
-      allGoals = await goalsRes.json();
+      await gasRun('deleteGoal', id);
+      allGoals = await gasRun('getGoals');
       renderGoals();
       renderEditorGoalsList();
     } catch(e) { alert("刪除失敗"); }
@@ -867,13 +835,8 @@
     const name = document.getElementById('edit-cat-name-' + id).value.trim();
     if (!name) return alert("請輸入分類名稱");
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=categories`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: { icon, name } })
-      });
-      const catRes = await fetch(`${API_BASE}?sheet=categories`);
-      allCategories = await catRes.json();
+      await gasRun('updateCategory', id, { icon, name });
+      allCategories = await gasRun('getCategories');
       updateCategorySelect();
       renderEditorCatList();
     } catch(e) { alert("儲存失敗"); }
@@ -885,15 +848,10 @@
     if (!name) return alert("請輸入分類名稱");
     const data = { id: 'cat_' + Date.now(), name, type: currentEditorCatTab, icon };
     try {
-      await fetch(`${API_BASE}?sheet=categories`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: [data] })
-      });
+      await gasRun('addCategory', data);
       document.getElementById('editorCatIcon').value = '';
       document.getElementById('editorCatName').value = '';
-      const catRes = await fetch(`${API_BASE}?sheet=categories`);
-      allCategories = await catRes.json();
+      allCategories = await gasRun('getCategories');
       updateCategorySelect();
       renderEditorCatList();
     } catch(e) { alert("新增失敗"); }
@@ -902,9 +860,8 @@
   async function deleteCategory(id) {
     if (!confirm("確定刪除此分類？")) return;
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=categories`, { method: 'DELETE' });
-      const catRes = await fetch(`${API_BASE}?sheet=categories`);
-      allCategories = await catRes.json();
+      await gasRun('deleteCategory', id);
+      allCategories = await gasRun('getCategories');
       updateCategorySelect();
       renderEditorCatList();
     } catch(e) { alert("刪除失敗"); }
@@ -961,13 +918,8 @@
     const category = document.getElementById('edit-sc-cat-' + id).value;
     if (!text) return alert("請輸入快捷字詞");
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: { text, category } })
-      });
-      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
-      allNoteShortcuts = await res.json();
+      await gasRun('updateNoteShortcut', id, { text, category });
+      allNoteShortcuts = await gasRun('getNoteShortcuts');
       renderEditorShortcutList();
     } catch(e) { alert("儲存失敗"); }
   }
@@ -977,14 +929,9 @@
     const category = document.getElementById('editorNewShortcutCat').value;
     if (!text) return alert("請輸入快捷字詞");
     try {
-      await fetch(`${API_BASE}?sheet=note_shortcuts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: [{ id: 'sc_' + Date.now(), text, category }] })
-      });
+      await gasRun('addNoteShortcut', { id: 'sc_' + Date.now(), text, category });
       document.getElementById('editorNewShortcutText').value = '';
-      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
-      allNoteShortcuts = await res.json();
+      allNoteShortcuts = await gasRun('getNoteShortcuts');
       renderEditorShortcutList();
       populateShortcutCatSelect('editorNewShortcutCat', category);
     } catch(e) { alert("新增失敗"); }
@@ -992,9 +939,8 @@
 
   async function deleteShortcutFromEditor(id) {
     try {
-      await fetch(`${API_BASE}/id/${id}?sheet=note_shortcuts`, { method: 'DELETE' });
-      const res = await fetch(`${API_BASE}?sheet=note_shortcuts`);
-      allNoteShortcuts = await res.json();
+      await gasRun('deleteNoteShortcut', id);
+      allNoteShortcuts = await gasRun('getNoteShortcuts');
       renderEditorShortcutList();
     } catch(e) { alert("刪除失敗"); }
   }
@@ -1003,17 +949,11 @@
 
   // === 每日洞察 ===
   async function generateTodayInsight() {
-    if (!GAS_WEBAPP_URL) {
-      alert('請先在 index.html 的 GAS_WEBAPP_URL 填入你的 GAS Web App 部署網址');
-      return;
-    }
     const btn = document.getElementById('insightBtn');
     btn.disabled = true;
     btn.textContent = '✨ 載入中...';
     try {
-      const res = await fetch(GAS_WEBAPP_URL + '?action=getInsights');
-      const data = await res.json();
-      const insights = data.insights || [];
+      const insights = await gasRun('getInsights');
       if (insights.length > 0) {
         const latest = insights[0]; // getInsights 回傳最新的在前
         document.getElementById('insightText').textContent = latest.insight;
@@ -1023,7 +963,7 @@
         alert('尚無洞察紀錄\n\n請到 GAS 編輯器執行一次 setupDailyTrigger()，或手動執行 generateInsight() 產生第一筆洞察。');
       }
     } catch (err) {
-      alert('連線失敗，請確認 GAS Web App URL 是否正確');
+      alert('載入失敗，請稍後再試');
       console.error(err);
     } finally {
       btn.disabled = false;
@@ -1032,15 +972,12 @@
   }
 
   async function showInsightHistory() {
-    if (!GAS_WEBAPP_URL) return;
     const list = document.getElementById('insightHistoryList');
     list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">載入中...</div>';
     document.getElementById('insightHistoryOverlay').classList.add('show');
     document.getElementById('insightHistoryModal').classList.add('show');
     try {
-      const res = await fetch(GAS_WEBAPP_URL + '?action=getInsights');
-      const data = await res.json();
-      const insights = data.insights || [];
+      const insights = await gasRun('getInsights');
       if (!insights.length) {
         list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">尚無洞察紀錄</div>';
         return;
