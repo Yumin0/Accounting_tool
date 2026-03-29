@@ -383,8 +383,13 @@ function generateInsight() {
   const insightSheet0 = ss.getSheetByName('洞察紀錄');
   if (insightSheet0 && insightSheet0.getLastRow() > 1) {
     const lastRow = insightSheet0.getDataRange().getValues();
-    const lastTimestamp = lastRow[lastRow.length - 1][0].toString();
-    sinceDate = lastTimestamp.substring(0, 10);
+    const lastTimestampRaw = lastRow[lastRow.length - 1][0];
+    // Google Sheets 可能把存入的時間字串自動轉成 Date 物件，需要用 formatDate 轉回
+    if (lastTimestampRaw instanceof Date) {
+      sinceDate = Utilities.formatDate(lastTimestampRaw, 'Asia/Taipei', 'yyyy-MM-dd');
+    } else {
+      sinceDate = lastTimestampRaw.toString().substring(0, 10);
+    }
     periodLabel = '自 ' + sinceDate + ' 以來';
   } else {
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -557,7 +562,9 @@ function getInsights() {
   if (data.length <= 1) return [];
 
   return data.slice(1).reverse().map(row => ({
-    timestamp: row[0] ? row[0].toString() : '',
+    timestamp: row[0] instanceof Date
+      ? Utilities.formatDate(row[0], 'Asia/Taipei', "yyyy-MM-dd'T'HH:mm:ss")
+      : (row[0] ? row[0].toString() : ''),
     insight: row[1] ? row[1].toString() : ''
   }));
 }
