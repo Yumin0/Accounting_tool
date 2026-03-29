@@ -321,26 +321,43 @@
     await loadAll();
   }
 
+  // 本地快取 key
+  function cacheKey() { return 'acct_cache_' + getMonthStr(); }
+
   // 初始化載入
   async function loadAll() {
-    document.getElementById('monthLabel').textContent = getMonthStr();
+    const monthStr = getMonthStr();
+    document.getElementById('monthLabel').textContent = monthStr;
 
+    // 1. 立即從 localStorage 顯示快取（stale-while-revalidate）
     try {
-      // 1. 載入分類
-      allCategories = await gasAPI('getCategories');
+      const cached = localStorage.getItem(cacheKey());
+      if (cached) {
+        const d = JSON.parse(cached);
+        allCategories    = d.categories    || [];
+        allTxData        = d.transactions  || [];
+        allGoals         = d.goals         || [];
+        allNoteShortcuts = d.noteShortcuts || [];
+        updateCategorySelect();
+        updateSummary();
+        renderMonthView();
+        renderGoals();
+        renderNoteChips();
+      }
+    } catch(e) { /* 快取損壞就忽略 */ }
+
+    // 2. 背景抓取最新資料（單次 API 呼叫取代原本 4 次）
+    try {
+      const data = await gasAPI('getAll', { month: monthStr });
+      allCategories    = data.categories    || [];
+      allTxData        = data.transactions  || [];
+      allGoals         = data.goals         || [];
+      allNoteShortcuts = data.noteShortcuts || [];
+
+      // 存回快取
+      localStorage.setItem(cacheKey(), JSON.stringify(data));
+
       updateCategorySelect();
-
-      // 2. 載入當月帳目
-      allTxData = await gasAPI('getTransactions', { month: getMonthStr() });
-
-      // 3. 載入存錢目標
-      allGoals = await gasAPI('getGoals');
-
-      // 4. 載入快捷備註
-      try {
-        allNoteShortcuts = await gasAPI('getNoteShortcuts');
-      } catch(e) { allNoteShortcuts = []; }
-
       updateSummary();
       renderMonthView();
       renderGoals();
