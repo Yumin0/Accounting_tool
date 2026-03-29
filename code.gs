@@ -498,7 +498,7 @@ ${dataSummary}
       contentType: 'application/json',
       payload: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 200, temperature: 0.9 }
+        generationConfig: { maxOutputTokens: 500, temperature: 0.9 }
       }),
       muteHttpExceptions: true
     });
