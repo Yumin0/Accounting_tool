@@ -1,20 +1,45 @@
-// 1. 頁面進入點，回傳 HTML 給瀏覽器；也處理 API action 請求
+// API 入口：index.html 放在 GitHub Pages，透過 fetch 呼叫這裡
 function doGet(e) {
-  const action = e && e.parameter && e.parameter.action;
+  const p = e && e.parameter ? e.parameter : {};
+  const action = p.action;
 
-  if (action === 'generateInsight') {
-    const result = generateInsight();
-    return ContentService.createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+  const out = (data) => ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+
+  try {
+    // 讀取
+    if (action === 'getTransactions') return out(getTransactions(p.month));
+    if (action === 'getCategories')   return out(getCategories());
+    if (action === 'getGoals')        return out(getGoals());
+    if (action === 'getNoteShortcuts') return out(getNoteShortcuts());
+    if (action === 'getInsights')     return out(getInsights());
+
+    // 交易
+    if (action === 'addTransaction')    return out(addTransaction(JSON.parse(p.data)));
+    if (action === 'updateTransaction') return out(updateTransaction(p.id, JSON.parse(p.data)));
+    if (action === 'deleteTransaction') return out(deleteTransaction(p.id));
+
+    // 存錢目標
+    if (action === 'addGoal')    return out(addGoal(JSON.parse(p.data)));
+    if (action === 'updateGoal') return out(updateGoal(p.id, JSON.parse(p.data)));
+    if (action === 'deleteGoal') return out(deleteGoal(p.id));
+    if (action === 'addSavingsLog') return out(addSavingsLog(JSON.parse(p.data)));
+
+    // 分類
+    if (action === 'addCategory')    return out(addCategory(JSON.parse(p.data)));
+    if (action === 'updateCategory') return out(updateCategory(p.id, JSON.parse(p.data)));
+    if (action === 'deleteCategory') return out(deleteCategory(p.id));
+
+    // 快捷備註
+    if (action === 'addNoteShortcut')    return out(addNoteShortcut(JSON.parse(p.data)));
+    if (action === 'updateNoteShortcut') return out(updateNoteShortcut(p.id, JSON.parse(p.data)));
+    if (action === 'deleteNoteShortcut') return out(deleteNoteShortcut(p.id));
+
+    return out({ status: 'ok' });
+  } catch(err) {
+    return out({ error: err.toString() });
   }
-
-  if (action === 'getInsights') {
-    const insights = getInsights();
-    return ContentService.createTextOutput(JSON.stringify({ insights: insights }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  return HtmlService.createHtmlOutputFromFile('index.html');
 }
 
 // 2. 讀取指定月份的收支記錄

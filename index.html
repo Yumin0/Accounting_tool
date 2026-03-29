@@ -284,14 +284,18 @@
   </div>
 
 <script>
-  // 透過 google.script.run 呼叫 GAS 函式，包裝成 Promise
-  function gasRun(funcName, ...args) {
-    return new Promise((resolve, reject) => {
-      google.script.run
-        .withSuccessHandler(resolve)
-        .withFailureHandler(reject)
-        [funcName](...args);
-    });
+  // GAS Web App 部署 URL（Deploy > Manage deployments > 複製 URL）
+  const GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxIDAKiig0WOYJiPFZVT95MEcyEJF9_pPYmiAzSo2NiUkTj7ask7hzYyJNWaERhXH_I6A/exec';
+
+  // 呼叫 GAS API（全部走 GET + URL 參數，避免 CORS preflight 問題）
+  async function gasAPI(action, params = {}) {
+    const flat = {};
+    for (const [k, v] of Object.entries(params)) {
+      flat[k] = (typeof v === 'object' && v !== null) ? JSON.stringify(v) : v;
+    }
+    const qs = new URLSearchParams({ action, ...flat }).toString();
+    const res = await fetch(`${GAS_WEBAPP_URL}?${qs}`);
+    return res.json();
   }
 
   let currentYear = new Date().getFullYear();
@@ -323,18 +327,18 @@
 
     try {
       // 1. 載入分類
-      allCategories = await gasRun('getCategories');
+      allCategories = await gasAPI('getCategories');
       updateCategorySelect();
 
       // 2. 載入當月帳目
-      allTxData = await gasRun('getTransactions', getMonthStr());
+      allTxData = await gasAPI('getTransactions', { month: getMonthStr() });
 
       // 3. 載入存錢目標
-      allGoals = await gasRun('getGoals');
+      allGoals = await gasAPI('getGoals');
 
       // 4. 載入快捷備註
       try {
-        allNoteShortcuts = await gasRun('getNoteShortcuts');
+        allNoteShortcuts = await gasAPI('getNoteShortcuts');
       } catch(e) { allNoteShortcuts = []; }
 
       updateSummary();
@@ -495,9 +499,9 @@
 
     try {
       if (editingId) {
-        await gasRun('updateTransaction', editingId, data);
+        await gasAPI('updateTransaction', { id: editingId, data });
       } else {
-        await gasRun('addTransaction', data);
+        await gasAPI('addTransaction', { data });
       }
       closeModal();
       await loadAll();
@@ -526,7 +530,7 @@
   async function deleteItem(id) {
     if (!confirm("確定刪除？")) return;
     try {
-      await gasRun('deleteTransaction', id);
+      await gasAPI('deleteTransaction', { id });
       document.getElementById('detailPanel').innerHTML = '';
       await loadAll();
     } catch (err) {
@@ -619,16 +623,16 @@
     const btn = document.getElementById('depositSubmitBtn');
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
-      await gasRun('updateGoal', depositingGoalId, { saved_amount: newSaved });
-      await gasRun('addSavingsLog', {
+      await gasAPI('updateGoal', { id: depositingGoalId, data: { saved_amount: newSaved } });
+      await gasAPI('addSavingsLog', { data: {
         id: 'log_' + Date.now(),
         goal_id: depositingGoalId,
         goal_name: goal.name,
         amount: amount,
         saved_date: formatDate(new Date())
-      });
+      }});
       closeDepositModal();
-      allGoals = await gasRun('getGoals');
+      allGoals = await gasAPI('getGoals');
       renderGoals();
     } catch (err) {
       alert("儲存失敗");
@@ -735,8 +739,8 @@
     const deadline = document.getElementById('edit-goal-deadline-' + id).value;
     if (!name || !target || !deadline) return alert("請填寫所有欄位");
     try {
-      await gasRun('updateGoal', id, { name, target_amount: target, deadline });
-      allGoals = await gasRun('getGoals');
+      await gasAPI('updateGoal', { id, data: { name, target_amount: target, deadline } });
+      allGoals = await gasAPI('getGoals');
       renderGoals();
       renderEditorGoalsList();
     } catch(e) { alert("儲存失敗"); }
@@ -761,11 +765,11 @@
     const btn = document.getElementById('editorGoalSubmitBtn');
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
-      await gasRun('addGoal', data);
+      await gasAPI('addGoal', { data });
       document.getElementById('editorGoalName').value = '';
       document.getElementById('editorGoalTarget').value = '';
       document.getElementById('editorGoalDeadline').value = '';
-      allGoals = await gasRun('getGoals');
+      allGoals = await gasAPI('getGoals');
       renderGoals();
       renderEditorGoalsList();
     } catch (err) {
@@ -778,8 +782,8 @@
   async function deleteGoal(id) {
     if (!confirm("確定刪除此目標？")) return;
     try {
-      await gasRun('deleteGoal', id);
-      allGoals = await gasRun('getGoals');
+      await gasAPI('deleteGoal', { id });
+      allGoals = await gasAPI('getGoals');
       renderGoals();
       renderEditorGoalsList();
     } catch(e) { alert("刪除失敗"); }
@@ -835,8 +839,8 @@
     const name = document.getElementById('edit-cat-name-' + id).value.trim();
     if (!name) return alert("請輸入分類名稱");
     try {
-      await gasRun('updateCategory', id, { icon, name });
-      allCategories = await gasRun('getCategories');
+      await gasAPI('updateCategory', { id, data: { icon, name } });
+      allCategories = await gasAPI('getCategories');
       updateCategorySelect();
       renderEditorCatList();
     } catch(e) { alert("儲存失敗"); }
@@ -848,10 +852,10 @@
     if (!name) return alert("請輸入分類名稱");
     const data = { id: 'cat_' + Date.now(), name, type: currentEditorCatTab, icon };
     try {
-      await gasRun('addCategory', data);
+      await gasAPI('addCategory', { data });
       document.getElementById('editorCatIcon').value = '';
       document.getElementById('editorCatName').value = '';
-      allCategories = await gasRun('getCategories');
+      allCategories = await gasAPI('getCategories');
       updateCategorySelect();
       renderEditorCatList();
     } catch(e) { alert("新增失敗"); }
@@ -860,8 +864,8 @@
   async function deleteCategory(id) {
     if (!confirm("確定刪除此分類？")) return;
     try {
-      await gasRun('deleteCategory', id);
-      allCategories = await gasRun('getCategories');
+      await gasAPI('deleteCategory', { id });
+      allCategories = await gasAPI('getCategories');
       updateCategorySelect();
       renderEditorCatList();
     } catch(e) { alert("刪除失敗"); }
@@ -918,8 +922,8 @@
     const category = document.getElementById('edit-sc-cat-' + id).value;
     if (!text) return alert("請輸入快捷字詞");
     try {
-      await gasRun('updateNoteShortcut', id, { text, category });
-      allNoteShortcuts = await gasRun('getNoteShortcuts');
+      await gasAPI('updateNoteShortcut', { id, data: { text, category } });
+      allNoteShortcuts = await gasAPI('getNoteShortcuts');
       renderEditorShortcutList();
     } catch(e) { alert("儲存失敗"); }
   }
@@ -929,9 +933,9 @@
     const category = document.getElementById('editorNewShortcutCat').value;
     if (!text) return alert("請輸入快捷字詞");
     try {
-      await gasRun('addNoteShortcut', { id: 'sc_' + Date.now(), text, category });
+      await gasAPI('addNoteShortcut', { data: { id: 'sc_' + Date.now(), text, category } });
       document.getElementById('editorNewShortcutText').value = '';
-      allNoteShortcuts = await gasRun('getNoteShortcuts');
+      allNoteShortcuts = await gasAPI('getNoteShortcuts');
       renderEditorShortcutList();
       populateShortcutCatSelect('editorNewShortcutCat', category);
     } catch(e) { alert("新增失敗"); }
@@ -939,8 +943,8 @@
 
   async function deleteShortcutFromEditor(id) {
     try {
-      await gasRun('deleteNoteShortcut', id);
-      allNoteShortcuts = await gasRun('getNoteShortcuts');
+      await gasAPI('deleteNoteShortcut', { id });
+      allNoteShortcuts = await gasAPI('getNoteShortcuts');
       renderEditorShortcutList();
     } catch(e) { alert("刪除失敗"); }
   }
@@ -953,7 +957,7 @@
     btn.disabled = true;
     btn.textContent = '✨ 載入中...';
     try {
-      const insights = await gasRun('getInsights');
+      const insights = await gasAPI('getInsights');
       if (insights.length > 0) {
         const latest = insights[0]; // getInsights 回傳最新的在前
         document.getElementById('insightText').textContent = latest.insight;
@@ -977,7 +981,7 @@
     document.getElementById('insightHistoryOverlay').classList.add('show');
     document.getElementById('insightHistoryModal').classList.add('show');
     try {
-      const insights = await gasRun('getInsights');
+      const insights = await gasAPI('getInsights');
       if (!insights.length) {
         list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">尚無洞察紀錄</div>';
         return;
