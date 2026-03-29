@@ -14,6 +14,7 @@ function doGet(e) {
     if (action === 'getGoals')        return out(getGoals());
     if (action === 'getNoteShortcuts') return out(getNoteShortcuts());
     if (action === 'getInsights')     return out(getInsights());
+    if (action === 'generateInsight') return out(generateInsight());
     if (action === 'getAll')          return out(getAllData(p.month));
 
     // 交易
@@ -374,14 +375,26 @@ function generateInsight() {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return { success: false, error: '尚無交易資料，先記幾筆帳再來看看吧！' };
 
-  // 計算 10 天前的日期字串
   const now = new Date();
-  const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
-  const tenDaysAgoStr = Utilities.formatDate(tenDaysAgo, 'Asia/Taipei', 'yyyy-MM-dd');
+
+  // 決定資料範圍：自上次洞察以來，若無歷史則用最近 7 天
+  let sinceDate = null;
+  let periodLabel = '';
+  const insightSheet0 = ss.getSheetByName('洞察紀錄');
+  if (insightSheet0 && insightSheet0.getLastRow() > 1) {
+    const lastRow = insightSheet0.getDataRange().getValues();
+    const lastTimestamp = lastRow[lastRow.length - 1][0].toString();
+    sinceDate = lastTimestamp.substring(0, 10);
+    periodLabel = '自 ' + sinceDate + ' 以來';
+  } else {
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    sinceDate = Utilities.formatDate(sevenDaysAgo, 'Asia/Taipei', 'yyyy-MM-dd');
+    periodLabel = '最近 7 天';
+  }
 
   const recentRows = data.slice(1).filter(row => {
     const dateStr = row[1] ? row[1].toString().replace(/^'/, '') : '';
-    return dateStr >= tenDaysAgoStr && dateStr.length === 10;
+    return dateStr >= sinceDate && dateStr.length === 10;
   }).map(row => ({
     date: row[1].toString().replace(/^'/, ''),
     type: row[2],
@@ -391,7 +404,7 @@ function generateInsight() {
   }));
 
   if (recentRows.length === 0) {
-    return { success: false, error: '近10天沒有資料，先記幾筆帳再來看看吧！' };
+    return { success: false, error: periodLabel + '沒有新的交易，先記幾筆帳再來看看吧！' };
   }
 
   // 讀取存錢目標
@@ -422,7 +435,15 @@ function generateInsight() {
   ];
 
   const shuffled = angles.slice().sort(() => Math.random() - 0.5);
-  const selectedAngles = shuffled.slice(0, Math.floor(Math.random() * 2) + 1);
+  const selectedAngles = shuffled.slice(0, 2);
+
+  // 時間段
+  const hour = parseInt(Utilities.formatDate(now, 'Asia/Taipei', 'H'));
+  let timeOfDay;
+  if (hour >= 6 && hour < 12) timeOfDay = '早上';
+  else if (hour >= 12 && hour < 18) timeOfDay = '下午';
+  else if (hour >= 18) timeOfDay = '晚上';
+  else timeOfDay = '深夜';
 
   // 整理資料摘要
   const expenseRows = recentRows.filter(r => r.type === 'expense');
@@ -431,7 +452,7 @@ function generateInsight() {
   const totalInc = incomeRows.reduce((s, r) => s + r.amount, 0);
   const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
-  let dataSummary = `近10天交易（共 ${recentRows.length} 筆）：\n`;
+  let dataSummary = `${periodLabel}的交易（共 ${recentRows.length} 筆）：\n`;
   dataSummary += `總支出 $${totalExp}，總收入 $${totalInc}\n\n明細：\n`;
   recentRows.forEach(r => {
     const d = new Date(r.date);
@@ -442,11 +463,13 @@ function generateInsight() {
 
   const prompt = `你是個很了解這個人的朋友，不是理財顧問。用繁體中文，輕鬆口吻，像在聊天一樣，不評判，不說教。
 
+現在是${timeOfDay}。
+
 ${dataSummary}
 
 請從以下角度觀察：${selectedAngles.join('、')}
 
-用3句話以內，分享你觀察到的有趣現象或小發現。語氣像朋友說「欸我發現你...」或「你最近...」之類的。`;
+分享 2 個有趣現象或小發現，每個一句話。語氣像朋友說「欸我發現你...」或「你最近...」之類的。`;
 
   // 呼叫 Gemini API
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
