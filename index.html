@@ -977,9 +977,15 @@
       const insights = await gasAPI('getInsights');
       if (insights.length > 0) {
         const latest = insights[0]; // getInsights 回傳最新的在前
-        document.getElementById('insightText').textContent = latest.insight;
-        document.getElementById('insightTime').textContent = latest.timestamp.replace('T', ' ');
-        document.getElementById('insightCard').style.display = 'block';
+        const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Taipei' }).format(new Date());
+        const insightDateStr = latest.timestamp.substring(0, 10);
+        if (insightDateStr === todayStr) {
+          document.getElementById('insightText').textContent = latest.insight;
+          document.getElementById('insightTime').textContent = latest.timestamp.replace('T', ' ');
+          document.getElementById('insightCard').style.display = 'block';
+        } else {
+          alert('今日洞察尚未產生。\n\n每日洞察由系統在早上 8 點自動產生，請稍後再試。\n（最近一筆洞察來自 ' + insightDateStr + '，可至歷史紀錄查看）');
+        }
       } else {
         alert('尚無洞察紀錄\n\n請到 GAS 編輯器執行一次 setupDailyTrigger()，或手動執行 generateInsight() 產生第一筆洞察。');
       }
