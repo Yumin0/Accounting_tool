@@ -14,6 +14,7 @@ function doGet(e) {
     if (action === 'getGoals')        return out(getGoals());
     if (action === 'getNoteShortcuts') return out(getNoteShortcuts());
     if (action === 'getInsights')     return out(getInsights());
+    if (action === 'getAll')          return out(getAllData(p.month));
 
     // 交易
     if (action === 'addTransaction')    return out(addTransaction(JSON.parse(p.data)));
@@ -40,6 +41,41 @@ function doGet(e) {
   } catch(err) {
     return out({ error: err.toString() });
   }
+}
+
+// 一次性批次讀取所有初始化所需資料（減少 API round-trip 次數）
+function getAllData(month) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // transactions
+  const txSheet = ss.getSheetByName('transactions');
+  const txData = txSheet.getDataRange().getValues();
+  const transactions = txData.slice(1)
+    .filter(row => row[1].toString().startsWith(month))
+    .map(row => ({ id: row[0], date: row[1], type: row[2], amount: row[3], category: row[4], note: row[5] }));
+
+  // categories
+  const catSheet = ss.getSheetByName('categories');
+  const catData = catSheet.getDataRange().getValues();
+  const categories = catData.slice(1).map(row => ({ id: row[0], name: row[1], icon: row[2], type: row[3] }));
+
+  // goals
+  const goalSheet = ss.getSheetByName('goals');
+  const goalData = goalSheet.getDataRange().getValues();
+  const goals = goalData.slice(1).map(row => ({
+    id: row[0], name: row[1], target_amount: row[2],
+    saved_amount: row[3], deadline: row[4], status: row[6]
+  }));
+
+  // note shortcuts
+  let noteShortcuts = [];
+  const nsSheet = ss.getSheetByName('note_shortcuts');
+  if (nsSheet) {
+    const nsData = nsSheet.getDataRange().getValues();
+    noteShortcuts = nsData.slice(1).map(row => ({ id: row[0], text: row[1], category: row[2] || '' }));
+  }
+
+  return { transactions, categories, goals, noteShortcuts };
 }
 
 // 2. 讀取指定月份的收支記錄
@@ -461,6 +497,31 @@ ${dataSummary}
   } catch (e) {
     return { success: false, error: '呼叫失敗：' + e.toString() };
   }
+}
+
+// ========================
+// Keep-Warm：防止 GAS 冷啟動
+// ========================
+
+// 【設定方式】在 GAS 編輯器執行 setupKeepWarmTrigger 一次
+// 會每 5 分鐘自動 ping 一次 Web App，維持執行環境熱度
+function keepWarm() {
+  // 輕量操作：只存取 SpreadsheetApp 確認連線，不讀取任何資料
+  SpreadsheetApp.getActiveSpreadsheet().getName();
+}
+
+function setupKeepWarmTrigger() {
+  // 清除舊的 keepWarm trigger 避免重複
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'keepWarm')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger('keepWarm')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+
+  Logger.log('已設定每 5 分鐘自動 keep-warm');
 }
 
 // 讀取所有洞察紀錄（最新的在前）
