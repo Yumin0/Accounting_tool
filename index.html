@@ -142,7 +142,7 @@
   <!-- 每日洞察區域 -->
   <div class="insight-section">
     <div class="insight-btn-row">
-      <button class="insight-btn" id="insightBtn" onclick="generateTodayInsight()">✨ 今日洞察</button>
+      <button class="insight-btn" id="insightBtn" onclick="generateTodayInsight()">✨ 產生洞察</button>
       <button class="insight-history-btn" onclick="showInsightHistory()">📋 歷史紀錄</button>
     </div>
     <div id="insightCard" style="display:none" class="insight-card">
@@ -972,23 +972,22 @@
   async function generateTodayInsight() {
     const btn = document.getElementById('insightBtn');
     btn.disabled = true;
-    btn.textContent = '✨ 載入中...';
+    btn.textContent = '✨ 產生中...';
     try {
-      const insights = await gasAPI('getInsights');
-      if (insights.length > 0) {
-        const latest = insights[0]; // getInsights 回傳最新的在前
-        document.getElementById('insightText').textContent = latest.insight;
-        document.getElementById('insightTime').textContent = latest.timestamp.replace('T', ' ');
+      const result = await gasAPI('generateInsight');
+      if (result.success) {
+        document.getElementById('insightText').textContent = result.insight;
+        document.getElementById('insightTime').textContent = result.timestamp.replace('T', ' ');
         document.getElementById('insightCard').style.display = 'block';
       } else {
-        alert('尚無洞察紀錄\n\n請到 GAS 編輯器執行一次 setupDailyTrigger()，或手動執行 generateInsight() 產生第一筆洞察。');
+        alert(result.error || '產生失敗，請稍後再試');
       }
     } catch (err) {
       alert('載入失敗，請稍後再試');
       console.error(err);
     } finally {
       btn.disabled = false;
-      btn.textContent = '✨ 今日洞察';
+      btn.textContent = '✨ 產生洞察';
     }
   }
 
