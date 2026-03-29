@@ -468,13 +468,11 @@ function generateInsight() {
 
   const prompt = `你是個很了解這個人的朋友，不是理財顧問。用繁體中文，輕鬆口吻，像在聊天一樣，不評判，不說教。
 
-現在是${timeOfDay}。
+以下是這個人的帳務資料：
 
 ${dataSummary}
 
-請從以下角度觀察：${selectedAngles.join('、')}
-
-分享 2 個有趣現象或小發現，每個一句話。語氣像朋友說「欸我發現你...」或「你最近...」之類的。`;
+請針對「${selectedAngles.join('」和「')}」這兩個角度，各分享一句有趣的觀察。語氣像朋友說「欸我發現你...」或「你最近...」。（現在是${timeOfDay}，請讓語氣符合當下時段，但不要直接提到時間）`;
 
   // 呼叫 Gemini API
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
