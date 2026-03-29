@@ -397,9 +397,9 @@ function generateInsight() {
     periodLabel = '最近 7 天';
   }
 
-  const recentRows = data.slice(1).filter(row => {
+  const filterRows = (fromDate) => data.slice(1).filter(row => {
     const dateStr = row[1] ? row[1].toString().replace(/^'/, '') : '';
-    return dateStr >= sinceDate && dateStr.length === 10;
+    return dateStr >= fromDate && dateStr.length === 10;
   }).map(row => ({
     date: row[1].toString().replace(/^'/, ''),
     type: row[2],
@@ -408,8 +408,18 @@ function generateInsight() {
     note: row[5] || ''
   }));
 
+  let recentRows = filterRows(sinceDate);
+
+  // 若資料不足 3 筆，自動擴展到最近 14 天
+  if (recentRows.length < 3) {
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const fallbackDate = Utilities.formatDate(fourteenDaysAgo, 'Asia/Taipei', 'yyyy-MM-dd');
+    recentRows = filterRows(fallbackDate);
+    periodLabel = '最近 14 天';
+  }
+
   if (recentRows.length === 0) {
-    return { success: false, error: periodLabel + '沒有新的交易，先記幾筆帳再來看看吧！' };
+    return { success: false, error: '最近沒有交易紀錄，先記幾筆帳再來看看吧！' };
   }
 
   // 讀取存錢目標
