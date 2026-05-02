@@ -144,7 +144,7 @@
 
   <div class="summary">
     <div class="summary-card" onclick="openExpenseAnalysis()" style="cursor:pointer;"><div class="label">本月支出</div><div class="value expense" id="totalExpense">$0</div></div>
-    <div class="summary-card"><div class="label">本月收入</div><div class="value income" id="totalIncome">$0</div></div>
+    <div class="summary-card" onclick="openIncomeAnalysis()" style="cursor:pointer;"><div class="label">本月收入</div><div class="value income" id="totalIncome">$0</div></div>
     <div class="summary-card"><div class="label">可儲蓄</div><div class="value saving" id="totalSaving">$0</div></div>
   </div>
 
@@ -301,7 +301,7 @@
   <div class="analysis-overlay" id="analysisOverlay" onclick="closeExpenseAnalysis()"></div>
   <div class="analysis-modal" id="analysisModal">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
-      <div style="font-weight:bold;font-size:16px;">📊 消費分析</div>
+      <div style="font-weight:bold;font-size:16px;" id="analysisTitle">📊 消費分析</div>
       <div style="font-size:13px;color:#6B7280;" id="analysisMonthLabel"></div>
     </div>
     <div class="analysis-tab-row">
@@ -1020,10 +1020,16 @@
   // === 消費分析 ===
   const ANALYSIS_COLORS = ['#3B82F6','#EF4444','#22C55E','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1'];
   let currentAnalysisTab = 'share';
+  let currentAnalysisType = 'expense';
   let trendDataCache = null;
   let currentTrendCat = '';
 
-  function openExpenseAnalysis() {
+  function openExpenseAnalysis() { openAnalysis('expense'); }
+  function openIncomeAnalysis()  { openAnalysis('income');  }
+
+  function openAnalysis(type) {
+    currentAnalysisType = type;
+    document.getElementById('analysisTitle').textContent = type === 'expense' ? '📊 消費分析' : '📊 收入分析';
     document.getElementById('analysisMonthLabel').textContent = getMonthStr();
     trendDataCache = null;
     currentTrendCat = '';
@@ -1050,7 +1056,7 @@
   function renderShareView() {
     const catTotals = {};
     allTxData.forEach(tx => {
-      if (tx.type !== 'expense') return;
+      if (tx.type !== currentAnalysisType) return;
       catTotals[tx.category] = (catTotals[tx.category] || 0) + Number(tx.amount);
     });
     const total = Object.values(catTotals).reduce((s, v) => s + v, 0);
@@ -1058,6 +1064,7 @@
       .map(([name, amount]) => ({ name, amount }))
       .sort((a, b) => b.amount - a.amount);
     if (!items.length || total === 0) {
+      document.getElementById('analysisEmpty').textContent = currentAnalysisType === 'expense' ? '本月無支出紀錄' : '本月無收入紀錄';
       document.getElementById('analysisEmpty').style.display = 'block';
       document.getElementById('analysisChartArea').style.display = 'none';
     } else {
@@ -1084,7 +1091,8 @@
       accumulated += dash;
     });
     const totalLabel = total >= 10000 ? Math.round(total / 1000) + 'k' : total.toLocaleString();
-    html += `<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="12" fill="#6B7280">支出</text>
+    const centerLabel = currentAnalysisType === 'expense' ? '支出' : '收入';
+    html += `<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="12" fill="#6B7280">${centerLabel}</text>
       <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="15" font-weight="bold" fill="#1C1C1E">$${totalLabel}</text>`;
     svg.innerHTML = html;
   }
@@ -1126,7 +1134,7 @@
       const byCategory = {};
       results.forEach((txList, idx) => {
         (txList || []).forEach(tx => {
-          if (tx.type !== 'expense') return;
+          if (tx.type !== currentAnalysisType) return;
           if (!byCategory[tx.category]) byCategory[tx.category] = Array(6).fill(0);
           byCategory[tx.category][idx] += Number(tx.amount);
         });
@@ -1155,6 +1163,7 @@
       return `<button class="trend-cat-btn${name === currentTrendCat ? ' active' : ''}" onclick="selectTrendCat('${name.replace(/'/g, "\\'")}')">${icon} ${name}</button>`;
     }).join('');
     if (!sortedCats.length) {
+      document.getElementById('trendEmpty').textContent = currentAnalysisType === 'expense' ? '近 6 個月無支出紀錄' : '近 6 個月無收入紀錄';
       document.getElementById('trendEmpty').style.display = 'block';
       document.getElementById('trendChart').innerHTML = '';
       return;
