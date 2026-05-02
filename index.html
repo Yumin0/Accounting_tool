@@ -109,6 +109,20 @@
     .insight-history-item:last-child { border-bottom: none; }
     .insight-history-date { font-size: 12px; color: #9CA3AF; margin-bottom: 4px; }
     .insight-history-text { font-size: 14px; line-height: 1.65; color: #374151; white-space: pre-wrap; }
+
+    /* 消費分析 Modal */
+    .analysis-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; }
+    .analysis-overlay.show { display: block; }
+    .analysis-modal { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 85vh; display: flex; flex-direction: column; }
+    .analysis-modal.show { transform: translateY(0); }
+    .analysis-chart-area { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+    .analysis-legend { flex: 1; overflow-y: auto; max-height: 180px; }
+    .analysis-legend-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #F1F5F9; font-size: 14px; }
+    .analysis-legend-item:last-child { border-bottom: none; }
+    .analysis-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .analysis-legend-name { flex: 1; color: #374151; }
+    .analysis-legend-amt { font-weight: bold; color: #374151; text-align: right; white-space: nowrap; }
+    .analysis-legend-pct { color: #6B7280; font-size: 13px; min-width: 42px; text-align: right; }
   </style>
 </head>
 <body>
@@ -123,7 +137,7 @@
   </div>
 
   <div class="summary">
-    <div class="summary-card"><div class="label">本月支出</div><div class="value expense" id="totalExpense">$0</div></div>
+    <div class="summary-card" onclick="openExpenseAnalysis()" style="cursor:pointer;"><div class="label">本月支出</div><div class="value expense" id="totalExpense">$0</div></div>
     <div class="summary-card"><div class="label">本月收入</div><div class="value income" id="totalIncome">$0</div></div>
     <div class="summary-card"><div class="label">可儲蓄</div><div class="value saving" id="totalSaving">$0</div></div>
   </div>
@@ -275,6 +289,23 @@
     </div>
 
     <button class="btn-cancel" onclick="closeSheetEditor()" style="flex-shrink:0;margin-top:14px;">關閉</button>
+  </div>
+
+  <!-- 消費分析 Modal -->
+  <div class="analysis-overlay" id="analysisOverlay" onclick="closeExpenseAnalysis()"></div>
+  <div class="analysis-modal" id="analysisModal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0;">
+      <div style="font-weight:bold;font-size:16px;">📊 消費分析</div>
+      <div style="font-size:13px;color:#6B7280;" id="analysisMonthLabel"></div>
+    </div>
+    <div style="overflow-y:auto;flex:1;">
+      <div class="analysis-chart-area" id="analysisChartArea">
+        <svg id="analysisChart" width="140" height="140" viewBox="0 0 140 140" style="flex-shrink:0;"></svg>
+        <div class="analysis-legend" id="analysisLegend"></div>
+      </div>
+      <div id="analysisEmpty" style="display:none;text-align:center;color:#aaa;padding:40px;">本月無支出紀錄</div>
+    </div>
+    <button class="btn-cancel" onclick="closeExpenseAnalysis()" style="flex-shrink:0;margin-top:14px;">關閉</button>
   </div>
 
   <!-- FAB 按鈕區 -->
@@ -967,6 +998,81 @@
   }
 
   loadAll();
+
+  // === 消費分析 ===
+  const ANALYSIS_COLORS = ['#3B82F6','#EF4444','#22C55E','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1'];
+
+  function openExpenseAnalysis() {
+    document.getElementById('analysisMonthLabel').textContent = getMonthStr();
+
+    const catTotals = {};
+    allTxData.forEach(tx => {
+      if (tx.type !== 'expense') return;
+      catTotals[tx.category] = (catTotals[tx.category] || 0) + Number(tx.amount);
+    });
+
+    const total = Object.values(catTotals).reduce((s, v) => s + v, 0);
+    const items = Object.entries(catTotals)
+      .map(([name, amount]) => ({ name, amount }))
+      .sort((a, b) => b.amount - a.amount);
+
+    if (!items.length || total === 0) {
+      document.getElementById('analysisEmpty').style.display = 'block';
+      document.getElementById('analysisChartArea').style.display = 'none';
+    } else {
+      document.getElementById('analysisEmpty').style.display = 'none';
+      document.getElementById('analysisChartArea').style.display = 'flex';
+      renderDonutChart(items, total);
+      renderAnalysisLegend(items, total);
+    }
+
+    document.getElementById('analysisOverlay').classList.add('show');
+    document.getElementById('analysisModal').classList.add('show');
+  }
+
+  function closeExpenseAnalysis() {
+    document.getElementById('analysisModal').classList.remove('show');
+    document.getElementById('analysisOverlay').classList.remove('show');
+  }
+
+  function renderDonutChart(items, total) {
+    const svg = document.getElementById('analysisChart');
+    const cx = 70, cy = 70, r = 52, strokeW = 22;
+    const circ = 2 * Math.PI * r;
+
+    let html = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#F1F5F9" stroke-width="${strokeW}"/>`;
+
+    let accumulated = 0;
+    items.forEach((item, i) => {
+      const dash = (item.amount / total) * circ;
+      const color = ANALYSIS_COLORS[i % ANALYSIS_COLORS.length];
+      html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeW}"
+        stroke-dasharray="${dash} ${circ - dash}"
+        stroke-dashoffset="${-accumulated}"
+        transform="rotate(-90 ${cx} ${cy})"/>`;
+      accumulated += dash;
+    });
+
+    const totalLabel = total >= 10000 ? Math.round(total / 1000) + 'k' : total.toLocaleString();
+    html += `<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="12" fill="#6B7280">支出</text>
+      <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="15" font-weight="bold" fill="#1C1C1E">$${totalLabel}</text>`;
+
+    svg.innerHTML = html;
+  }
+
+  function renderAnalysisLegend(items, total) {
+    document.getElementById('analysisLegend').innerHTML = items.map((item, i) => {
+      const color = ANALYSIS_COLORS[i % ANALYSIS_COLORS.length];
+      const pct = Math.round(item.amount / total * 100);
+      const amt = item.amount >= 10000 ? Math.round(item.amount / 1000) + 'k' : item.amount.toLocaleString();
+      return `<div class="analysis-legend-item">
+        <div class="analysis-legend-dot" style="background:${color}"></div>
+        <span class="analysis-legend-name">${item.name}</span>
+        <span class="analysis-legend-amt">$${amt}</span>
+        <span class="analysis-legend-pct">${pct}%</span>
+      </div>`;
+    }).join('');
+  }
 
   // === 每日洞察 ===
   async function generateTodayInsight() {
