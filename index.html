@@ -1061,7 +1061,7 @@
     let total = 0;
     allTxData.forEach(tx => {
       if (tx.type !== currentAnalysisType) return;
-      const key = tx.note || '（無備註）';
+      const key = tx.note || tx.category || '（無備註）';
       noteTotals[key] = (noteTotals[key] || 0) + Number(tx.amount);
       total += Number(tx.amount);
     });
