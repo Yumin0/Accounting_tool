@@ -315,6 +315,7 @@
         <div class="analysis-legend" id="analysisLegend"></div>
       </div>
       <div id="analysisEmpty" style="display:none;text-align:center;color:#aaa;padding:40px;">本月無支出紀錄</div>
+      <div id="analysisTop5Notes"></div>
     </div>
     <!-- 月趨勢 panel -->
     <div id="analysisPanelTrend" style="display:none;overflow-y:auto;flex:1;">
@@ -1053,6 +1054,38 @@
     else loadAndRenderTrend();
   }
 
+  function renderTop5Notes() {
+    const el = document.getElementById('analysisTop5Notes');
+    if (currentAnalysisType !== 'expense') { el.innerHTML = ''; return; }
+    const noteTotals = {};
+    let total = 0;
+    allTxData.forEach(tx => {
+      if (tx.type !== 'expense') return;
+      const key = tx.note || '（無備註）';
+      noteTotals[key] = (noteTotals[key] || 0) + Number(tx.amount);
+      total += Number(tx.amount);
+    });
+    const items = Object.entries(noteTotals)
+      .map(([note, amount]) => ({ note, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+    if (!items.length || total === 0) { el.innerHTML = ''; return; }
+    let html = `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #F1F5F9;">
+      <div style="font-size:14px;font-weight:bold;color:#1E3A5F;margin-bottom:8px;">本月支出 Top 5 明細</div>`;
+    items.forEach((item, i) => {
+      const pct = Math.round(item.amount / total * 100);
+      const amt = item.amount >= 10000 ? Math.round(item.amount / 1000) + 'k' : item.amount.toLocaleString();
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #F8FAFC;font-size:14px;">
+        <span style="width:20px;text-align:center;font-weight:bold;color:#6B7280;">${i + 1}</span>
+        <span style="flex:1;color:#374151;">${item.note}</span>
+        <span style="font-weight:bold;color:#EF4444;">$${amt}</span>
+        <span style="color:#6B7280;font-size:13px;min-width:38px;text-align:right;">${pct}%</span>
+      </div>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
   function renderShareView() {
     const catTotals = {};
     allTxData.forEach(tx => {
@@ -1073,6 +1106,7 @@
       renderDonutChart(items, total);
       renderAnalysisLegend(items, total);
     }
+    renderTop5Notes();
   }
 
   function renderDonutChart(items, total) {
