@@ -480,6 +480,8 @@
       renderNoteChips();
     } catch (err) {
       console.error("載入失敗", err);
+      document.getElementById('totalSaving').textContent = '載入失敗';
+      document.getElementById('totalExpense').textContent = err.message || '請重新整理';
     }
   }
 
