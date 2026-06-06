@@ -1,0 +1,7 @@
+node_modules/
+.env.local
+.env*.local
+.vercel/cache
+"Accounting Tool - *.csv"
+seed.sql
+generate_seed.js
