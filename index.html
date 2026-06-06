@@ -197,6 +197,15 @@
     <span id="monthLabel" class="month-label"></span>
     <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
   </div>
+  <div id="apiBanner" style="display:none;margin:0 14px 8px;padding:8px 12px;background:#fdecea;color:#c0392b;border-radius:10px;font-size:13px;font-weight:700;word-break:break-all;"></div>
+  <script>
+    const _apiBanner = document.getElementById('apiBanner');
+    const _origSet = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'textContent').set;
+    Object.defineProperty(_apiBanner, 'textContent', {
+      set(v) { _origSet.call(_apiBanner, v); _apiBanner.style.display = v ? 'block' : 'none'; },
+      get() { return _apiBanner.innerText; }
+    });
+  </script>
 
   <div class="main-summary-card">
     <div class="summary-title">本月可儲蓄</div>
@@ -483,8 +492,8 @@
       renderNoteChips();
     } catch (err) {
       console.error("載入失敗", err);
-      document.getElementById('totalSaving').textContent = '載入失敗';
-      document.getElementById('totalExpense').textContent = err.message || '請重新整理';
+      const errBanner = document.getElementById('apiBanner');
+      if (errBanner) errBanner.textContent = '⚠ 資料載入失敗：' + (err.message || err);
     }
   }
 
