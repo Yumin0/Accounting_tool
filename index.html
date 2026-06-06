@@ -401,18 +401,15 @@
   </div>
 
 <script>
-  // iOS PWA standalone 模式下 WKWebView 無法解析相對 URL，需用絕對 URL
-  const GAS_WEBAPP_URL = window.navigator.standalone
-    ? 'https://accounting-tool-six.vercel.app/api'
-    : '/api';
-
   async function gasAPI(action, params = {}) {
-    let qs = 'action=' + encodeURIComponent(action);
+    // 用 URL constructor + location.href 保證在任何環境（Safari/PWA/WKWebView）都能產生合法絕對 URL
+    const base = new URL('/api', location.href);
+    base.searchParams.set('action', action);
     for (const [k, v] of Object.entries(params)) {
-      const val = (typeof v === 'object' && v !== null) ? JSON.stringify(v) : String(v);
-      qs += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(val);
+      base.searchParams.set(k, (typeof v === 'object' && v !== null) ? JSON.stringify(v) : String(v));
     }
-    const res = await fetch(GAS_WEBAPP_URL + '?' + qs);
+    const res = await fetch(base.href);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
   }
 
@@ -484,7 +481,8 @@
       console.error("載入失敗", err);
       const errBanner = document.getElementById('apiBanner');
       if (errBanner) {
-        errBanner.textContent = '⚠ ' + (err.message || String(err));
+        const ctx = 'href=' + location.href + ' standalone=' + (window.navigator.standalone ?? 'n/a');
+        errBanner.textContent = '⚠ ' + (err.message || String(err)) + ' | ' + ctx;
         errBanner.style.display = 'block';
       }
     }
