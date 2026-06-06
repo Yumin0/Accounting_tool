@@ -401,10 +401,11 @@
   </div>
 
 <script>
-  // GAS Web App 部署 URL（Deploy > Manage deployments > 複製 URL）
-  const GAS_WEBAPP_URL = '/api';
+  // iOS PWA standalone 模式下 WKWebView 無法解析相對 URL，需用絕對 URL
+  const GAS_WEBAPP_URL = window.navigator.standalone
+    ? 'https://accounting-tool-six.vercel.app/api'
+    : '/api';
 
-  // 呼叫 GAS API（手動編碼避免 iOS WKWebView URLSearchParams bug）
   async function gasAPI(action, params = {}) {
     let qs = 'action=' + encodeURIComponent(action);
     for (const [k, v] of Object.entries(params)) {
