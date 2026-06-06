@@ -4,155 +4,221 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>記帳工具</title>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="記帳工具">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
   <style>
-    /* 這裡保留你原本所有的 CSS 樣式，不做變動 */
+    :root {
+      --bg: #FBF5EC;
+      --surface: #FFFFFF;
+      --ink: #3B332A;
+      --muted: #9E9285;
+      --hairline: #EDE3D5;
+      --primary: #E8A33F;
+      --soft: #FBEFD6;
+      --expense: #C9624E;
+      --expense-soft: #F8E3DD;
+      --income: #6F9E6E;
+      --income-soft: #E2EFE1;
+      --shadow-card: 0 6px 20px rgba(120,90,60,0.06);
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, Arial, sans-serif; background: white; color: #1C1C1E; font-size: 16px; }
-    .header { background: #1E3A5F; color: white; padding: 16px; display: flex; align-items: center; justify-content: space-between; }
-    .header h1 { font-size: 20px; }
-    .month-nav { display: flex; align-items: center; gap: 12px; }
-    .month-nav button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 16px; }
-    .month-nav span { font-size: 16px; font-weight: bold; min-width: 80px; text-align: center; }
-    .summary { display: flex; gap: 8px; padding: 12px 16px; background: white; border-bottom: 1px solid #E2E8F0; }
-    .summary-card { flex: 1; text-align: center; padding: 8px 4px; border-radius: 8px; background: #F8FAFC; }
-    .summary-card .label { font-size: 14px; color: #6B7280; margin-bottom: 4px; }
-    .summary-card .value { font-size: 18px; font-weight: bold; }
-    .value.expense { color: #EF4444; }
-    .value.income  { color: #22C55E; }
-    .value.saving  { color: #3B82F6; }
-    .calendar { padding: 0 12px 8px; background: white; }
-    .month-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 8px 0 4px; border-bottom: 1px solid #E5E5EA; }
-    .month-weekday { text-align: center; font-size: 14px; color: #8E8E93; font-weight: 600; }
+    body { font-family: 'Nunito', -apple-system, Arial, sans-serif; background: var(--bg); color: var(--ink); font-size: 16px; }
+
+    /* Header */
+    .header { background: var(--bg); padding: 14px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
+    .header-logo { display: flex; align-items: center; gap: 10px; }
+    .logo-block { width: 38px; height: 38px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-block svg { width: 20px; height: 20px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .header-title { font-size: 18px; font-weight: 800; color: var(--ink); }
+    .header-settings-btn { width: 38px; height: 38px; background: var(--surface); border: none; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow-card); color: var(--ink); }
+
+    /* Month nav */
+    .month-nav-bar { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 4px 16px 14px; }
+    .month-nav-btn { width: 32px; height: 32px; background: var(--surface); border: none; border-radius: 8px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; color: var(--ink); box-shadow: var(--shadow-card); font-weight: 700; line-height: 1; }
+    .month-label { font-size: 16px; font-weight: 800; color: var(--ink); min-width: 100px; text-align: center; }
+
+    /* Main summary card */
+    .main-summary-card { margin: 0 14px 14px; background: var(--primary); border-radius: 22px; padding: 20px 22px 18px; color: white; box-shadow: var(--shadow-card); }
+    .summary-title { font-size: 14px; font-weight: 700; opacity: 0.85; margin-bottom: 6px; }
+    .summary-saving { font-size: 38px; font-weight: 900; margin-bottom: 18px; line-height: 1.1; }
+    .summary-row { display: flex; align-items: center; }
+    .summary-item { flex: 1; cursor: pointer; }
+    .summary-item:active { opacity: 0.8; }
+    .summary-item-label { font-size: 13px; opacity: 0.8; font-weight: 700; }
+    .summary-item-value { font-size: 17px; font-weight: 800; margin-top: 3px; }
+    .summary-vline { width: 1px; height: 38px; background: rgba(255,255,255,0.35); margin: 0 18px; }
+
+    /* Calendar */
+    .calendar { background: var(--surface); border-radius: 22px; margin: 0 14px 14px; box-shadow: var(--shadow-card); overflow: hidden; }
+    .month-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 10px 8px 6px; border-bottom: 1px solid var(--hairline); }
+    .month-weekday { text-align: center; font-size: 13px; color: var(--muted); font-weight: 700; }
+    .month-weekday.weekend { color: var(--primary); }
     .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-    .week-row-line { grid-column: 1 / -1; height: 1px; background: #E5E5EA; }
-    .month-day { min-height: 80px; padding: 8px 4px 4px; background: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid #f0f0f0; }
+    .week-row-line { grid-column: 1 / -1; height: 1px; background: var(--hairline); }
+    .month-day { min-height: 64px; padding: 6px 3px 4px; background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; }
     .month-day.empty-cell { cursor: default; }
-    .month-day.future { color: #C7C7CC; }
-    .d-num { font-size: 16px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-    .month-day.today .d-num { background: #ef4345; color: white; font-weight: bold; }
-    .d-content { width: 100%; margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
-    .d-exp { font-size: 14px; background: #FECACA; color: #EF4444; border-radius: 4px; text-align: center; }
-    .d-inc { font-size: 14px; background: #BBF7D0; color: #16A34A; border-radius: 4px; text-align: center; }
-    .detail-panel { background: white; border-radius: 12px; margin: 8px 12px; border: 1px solid #E5E5EA; }
-    .detail-header { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #F1F5F9; }
-    .detail-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #F1F5F9; }
-    .di-icon { font-size: 20px; width: 30px; }
+    .month-day.future { color: var(--muted); }
+    .d-num { font-size: 14px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .month-day.today .d-num { background: var(--primary); color: white; font-weight: 900; }
+    .d-content { width: 100%; margin-top: 3px; display: flex; flex-direction: column; gap: 2px; }
+    .d-exp { font-size: 10px; background: var(--expense-soft); color: var(--expense); border-radius: 6px; text-align: center; padding: 1px 2px; font-weight: 700; }
+    .d-inc { font-size: 10px; background: var(--income-soft); color: var(--income); border-radius: 6px; text-align: center; padding: 1px 2px; font-weight: 700; }
+
+    /* Detail panel */
+    .detail-panel { background: var(--surface); border-radius: 20px; margin: 0 14px 14px; box-shadow: var(--shadow-card); overflow: hidden; }
+    .detail-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
+    .detail-item { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
+    .detail-item:last-child { border-bottom: none; }
+    .di-icon { font-size: 20px; width: 32px; }
     .di-info { flex: 1; }
-    .di-cat { font-size: 14px; font-weight: bold; }
-    .di-meta { font-size: 12px; color: #888; }
-    .di-amt { font-weight: bold; }
-    .di-amt.income { color: #22C55E; }
+    .di-cat { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .di-meta { font-size: 12px; color: var(--muted); }
+    .di-amt { font-weight: 800; color: var(--expense); }
+    .di-amt.income { color: var(--income); }
+
+    /* Modals */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; }
     .modal-overlay.show { display: block; }
-    .modal { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; }
+    .modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; }
     .modal.show { transform: translateY(0); }
     .form-row { margin-bottom: 12px; }
-    .form-row label { display: block; font-size: 13px; color: #6B7280; }
-    .form-row input, .form-row select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+    .form-row label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .form-row input, .form-row select { width: 100%; padding: 10px; border: 1px solid var(--hairline); border-radius: 10px; font-size: 16px; font-family: inherit; background: var(--bg); color: var(--ink); }
     .type-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-    .type-tab { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: white; cursor: pointer; text-align: center; }
-    .type-tab.active-expense { background: #FEF2F2; border-color: #EF4444; color: #EF4444; }
-    .type-tab.active-income  { background: #F0FDF4; border-color: #22C55E; color: #22C55E; }
-    .btn-submit { width: 100%; padding: 14px; background: #3B82F6; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-    .btn-cancel { width: 100%; margin-top: 10px; background: none; border: none; color: #888; cursor: pointer; }
-    .btn-sm { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; background: white; font-size: 12px; cursor: pointer; }
-    .category-btns { display: flex; gap: 6px; flex-wrap: nowrap; }
-    .cat-btn { flex: 1; padding: 8px 4px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; text-align: center; white-space: nowrap; }
-    .cat-btn.active { background: #EFF6FF; border-color: #3B82F6; color: #3B82F6; font-weight: bold; }
-    .goals-section { padding: 12px 12px 90px; background: #F8FAFC; }
-    .goals-title { font-size: 16px; font-weight: bold; color: #1E3A5F; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-    .goal-card { background: white; border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #E5E5EA; }
-    .goal-name { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
-    .goal-deadline { font-size: 12px; color: #888; margin-bottom: 8px; }
-    .goal-progress-wrap { background: #F1F5F9; border-radius: 20px; height: 10px; margin-bottom: 6px; overflow: hidden; }
-    .goal-progress-bar { height: 10px; border-radius: 20px; background: #3B82F6; transition: width 0.4s ease; }
-    .goal-progress-bar.done { background: #22C55E; }
-    .goal-amounts { display: flex; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 10px; }
-    .goal-deposit-btn { width: 100%; padding: 8px; background: #EFF6FF; color: #3B82F6; border: 1px solid #BFDBFE; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
-    .goal-deposit-btn:active { background: #DBEAFE; }
-    .note-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .note-chip { padding: 5px 12px; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 20px; font-size: 14px; cursor: pointer; color: #374151; white-space: nowrap; }
-    .note-chip.active { background: #EFF6FF; border-color: #3B82F6; color: #3B82F6; font-weight: bold; }
+    .type-tab { flex: 1; padding: 10px; border-radius: 16px; border: 1px solid var(--hairline); background: var(--surface); cursor: pointer; text-align: center; font-weight: 700; font-family: inherit; font-size: 15px; color: var(--muted); }
+    .type-tab.active-expense { background: var(--expense-soft); border-color: var(--expense); color: var(--expense); }
+    .type-tab.active-income  { background: var(--income-soft); border-color: var(--income); color: var(--income); }
+    .btn-submit { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 16px; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 16px; }
+    .btn-cancel { width: 100%; margin-top: 10px; background: none; border: none; color: var(--muted); cursor: pointer; font-family: inherit; font-size: 15px; }
+    .btn-sm { padding: 4px 10px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); font-size: 12px; cursor: pointer; color: var(--ink); font-family: inherit; }
+    .category-btns { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; }
+    .cat-btn { flex-shrink: 0; padding: 8px 10px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface); cursor: pointer; font-size: 14px; white-space: nowrap; font-family: inherit; color: var(--ink); }
+    .cat-btn.active { background: var(--soft); border-color: var(--primary); color: var(--primary); font-weight: 700; }
 
-    /* 統一資料管理 Modal — 放在最上層 z-index */
+    /* Goals */
+    .goals-section { padding: 0 14px 90px; }
+    .goals-title { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .goal-card { background: var(--surface); border-radius: 20px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-card); }
+    .goal-name { font-size: 15px; font-weight: 800; color: var(--ink); }
+    .goal-deadline { font-size: 12px; color: var(--muted); }
+    .goal-progress-wrap { background: var(--hairline); border-radius: 20px; height: 8px; margin-bottom: 8px; overflow: hidden; }
+    .goal-progress-bar { height: 8px; border-radius: 20px; background: var(--primary); transition: width 0.4s ease; }
+    .goal-progress-bar.done { background: var(--income); }
+    .goal-amounts { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+    .goal-deposit-btn { width: 100%; padding: 10px; background: var(--soft); color: var(--primary); border: none; border-radius: 16px; font-weight: 800; cursor: pointer; font-size: 14px; font-family: inherit; }
+    .goal-deposit-btn:active { opacity: 0.8; }
+
+    /* Note chips */
+    .note-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .note-chip { padding: 5px 12px; background: var(--bg); border: 1px solid var(--hairline); border-radius: 20px; font-size: 14px; cursor: pointer; color: var(--ink); white-space: nowrap; font-family: inherit; }
+    .note-chip.active { background: var(--soft); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+
+    /* Sheet editor */
     .sheet-editor-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; }
     .sheet-editor-overlay.show { display: block; }
-    .sheet-editor-modal { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 201; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+    .sheet-editor-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 201; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
     .sheet-editor-modal.show { transform: translateY(0); }
-    .editor-menu-item { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #E5E5EA; border-radius: 12px; margin-bottom: 10px; cursor: pointer; background: white; width: 100%; text-align: left; }
-    .editor-menu-item:active { background: #F8FAFC; }
-    .editor-cat-tab { flex: 1; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; }
-    .editor-cat-tab.active-expense { background: #FEF2F2; border: 1px solid #EF4444; color: #EF4444; }
-    .editor-cat-tab.active-income { background: #F0FDF4; border: 1px solid #22C55E; color: #22C55E; }
-    .editor-cat-tab.inactive { background: white; border: 1px solid #ddd; color: #888; }
+    .editor-menu-item { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--hairline); border-radius: 16px; margin-bottom: 10px; cursor: pointer; background: var(--surface); width: 100%; text-align: left; font-family: inherit; }
+    .editor-menu-item:active { background: var(--bg); }
+    .editor-cat-tab { flex: 1; padding: 8px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit; }
+    .editor-cat-tab.active-expense { background: var(--expense-soft); border: 1px solid var(--expense); color: var(--expense); }
+    .editor-cat-tab.active-income { background: var(--income-soft); border: 1px solid var(--income); color: var(--income); }
+    .editor-cat-tab.inactive { background: var(--surface); border: 1px solid var(--hairline); color: var(--muted); }
 
-    /* 每日洞察 */
-    .insight-section { padding: 8px 12px 0; }
+    /* Insight */
+    .insight-section { padding: 8px 14px 0; }
     .insight-btn-row { display: flex; gap: 10px; }
-    .insight-btn { flex: 3; padding: 14px 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(102,126,234,0.35); letter-spacing: 0.5px; }
-    .insight-btn:active { opacity: 0.88; }
+    .insight-btn { flex: 3; padding: 14px 10px; background: var(--ink); color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; letter-spacing: 0.3px; }
+    .insight-btn:active { opacity: 0.85; }
     .insight-btn:disabled { opacity: 0.6; cursor: default; }
-    .insight-history-btn { flex: 2; padding: 14px 10px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; border-radius: 14px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 14px rgba(245,87,108,0.3); letter-spacing: 0.5px; }
+    .insight-history-btn { flex: 2; padding: 14px 10px; background: var(--surface); color: var(--ink); border: 1px solid var(--hairline); border-radius: 16px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: var(--shadow-card); }
     .insight-history-btn:active { opacity: 0.88; }
-    .insight-card { background: linear-gradient(135deg, #faf7ff 0%, #fff5fb 100%); border: 1px solid #e0d0f8; border-radius: 14px; padding: 16px; margin-top: 10px; }
-    .insight-text { font-size: 15px; line-height: 1.75; color: #374151; white-space: pre-wrap; }
+    .insight-card { background: var(--soft); border: 1px solid var(--hairline); border-radius: 16px; padding: 16px; margin-top: 10px; }
+    .insight-text { font-size: 15px; line-height: 1.75; color: var(--ink); white-space: pre-wrap; }
     .insight-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-    .insight-time { font-size: 12px; color: #9CA3AF; }
-    .insight-history-link { font-size: 13px; color: #7C3AED; cursor: pointer; }
+    .insight-time { font-size: 12px; color: var(--muted); }
+    .insight-history-link { font-size: 13px; color: var(--primary); cursor: pointer; font-weight: 700; }
     .insight-history-link:active { opacity: 0.7; }
-    /* 洞察歷史 Modal */
+
+    /* Insight history modal */
     .insight-history-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; }
     .insight-history-overlay.show { display: block; }
-    .insight-history-modal { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 75vh; display: flex; flex-direction: column; }
+    .insight-history-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 75vh; display: flex; flex-direction: column; }
     .insight-history-modal.show { transform: translateY(0); }
-    .insight-history-item { padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+    .insight-history-item { padding: 12px 0; border-bottom: 1px solid var(--hairline); }
     .insight-history-item:last-child { border-bottom: none; }
-    .insight-history-date { font-size: 12px; color: #9CA3AF; margin-bottom: 4px; }
-    .insight-history-text { font-size: 14px; line-height: 1.65; color: #374151; white-space: pre-wrap; }
+    .insight-history-date { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .insight-history-text { font-size: 14px; line-height: 1.65; color: var(--ink); white-space: pre-wrap; }
 
-    /* 消費分析 Modal */
+    /* Analysis modal */
     .analysis-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; }
     .analysis-overlay.show { display: block; }
-    .analysis-modal { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 85vh; display: flex; flex-direction: column; }
+    .analysis-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 85vh; display: flex; flex-direction: column; }
     .analysis-modal.show { transform: translateY(0); }
     .analysis-chart-area { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
     .analysis-legend { flex: 1; overflow-y: auto; max-height: 180px; }
-    .analysis-legend-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #F1F5F9; font-size: 14px; }
+    .analysis-legend-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--hairline); font-size: 14px; }
     .analysis-legend-item:last-child { border-bottom: none; }
     .analysis-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-    .analysis-legend-name { flex: 1; color: #374151; }
-    .analysis-legend-amt { font-weight: bold; color: #374151; text-align: right; white-space: nowrap; }
-    .analysis-legend-pct { color: #6B7280; font-size: 13px; min-width: 42px; text-align: right; }
-    .analysis-tab-row { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #E5E5EA; flex-shrink: 0; margin-bottom: 14px; }
-    .analysis-tab { flex: 1; padding: 9px; text-align: center; font-size: 14px; font-weight: bold; cursor: pointer; background: white; border: none; color: #6B7280; }
-    .analysis-tab.active { background: #1E3A5F; color: white; }
+    .analysis-legend-name { flex: 1; color: var(--ink); }
+    .analysis-legend-amt { font-weight: 700; color: var(--ink); text-align: right; white-space: nowrap; }
+    .analysis-legend-pct { color: var(--muted); font-size: 13px; min-width: 42px; text-align: right; }
+    .analysis-tab-row { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid var(--hairline); flex-shrink: 0; margin-bottom: 14px; }
+    .analysis-tab { flex: 1; padding: 9px; text-align: center; font-size: 14px; font-weight: 700; cursor: pointer; background: var(--surface); border: none; color: var(--muted); font-family: inherit; }
+    .analysis-tab.active { background: var(--ink); color: white; }
     .trend-cat-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-    .trend-cat-btn { padding: 5px 12px; border: 1px solid #E5E5EA; border-radius: 20px; font-size: 13px; cursor: pointer; background: white; color: #374151; white-space: nowrap; }
-    .trend-cat-btn.active { background: #1E3A5F; border-color: #1E3A5F; color: white; font-weight: bold; }
+    .trend-cat-btn { padding: 5px 12px; border: 1px solid var(--hairline); border-radius: 20px; font-size: 13px; cursor: pointer; background: var(--surface); color: var(--ink); white-space: nowrap; font-family: inherit; }
+    .trend-cat-btn.active { background: var(--ink); border-color: var(--ink); color: white; font-weight: 700; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <h1>📒 記帳工具</h1>
-    <div class="month-nav">
-      <button onclick="changeMonth(-1)">◀</button>
-      <span id="monthLabel"></span>
-      <button onclick="changeMonth(1)">▶</button>
+    <div class="header-logo">
+      <div class="logo-block">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+      </div>
+      <span class="header-title">記帳工具</span>
     </div>
+    <button class="header-settings-btn" onclick="openSheetEditor()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
   </div>
 
-  <div class="summary">
-    <div class="summary-card" onclick="openExpenseAnalysis()" style="cursor:pointer;"><div class="label">本月支出</div><div class="value expense" id="totalExpense">$0</div></div>
-    <div class="summary-card" onclick="openIncomeAnalysis()" style="cursor:pointer;"><div class="label">本月收入</div><div class="value income" id="totalIncome">$0</div></div>
-    <div class="summary-card"><div class="label">可儲蓄</div><div class="value saving" id="totalSaving">$0</div></div>
+  <div class="month-nav-bar">
+    <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+    <span id="monthLabel" class="month-label"></span>
+    <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
+  </div>
+
+  <div class="main-summary-card">
+    <div class="summary-title">本月可儲蓄</div>
+    <div class="summary-saving" id="totalSaving">$0</div>
+    <div class="summary-row">
+      <div class="summary-item" onclick="openExpenseAnalysis()">
+        <div class="summary-item-label">支出</div>
+        <div class="summary-item-value" id="totalExpense">$0</div>
+      </div>
+      <div class="summary-vline"></div>
+      <div class="summary-item" onclick="openIncomeAnalysis()">
+        <div class="summary-item-label">收入</div>
+        <div class="summary-item-value" id="totalIncome">$0</div>
+      </div>
+    </div>
   </div>
 
   <div class="calendar">
     <div class="month-weekdays">
       <div class="month-weekday">一</div><div class="month-weekday">二</div><div class="month-weekday">三</div>
-      <div class="month-weekday">四</div><div class="month-weekday">五</div><div class="month-weekday">六</div>
-      <div class="month-weekday">日</div>
+      <div class="month-weekday">四</div><div class="month-weekday">五</div><div class="month-weekday weekend">六</div>
+      <div class="month-weekday weekend">日</div>
     </div>
     <div class="month-grid" id="monthGrid"></div>
   </div>
@@ -184,7 +250,8 @@
 
   <div class="goals-section">
     <div class="goals-title">
-      <span>🎯 存錢目標</span>
+      <span>存錢目標</span>
+      <span id="goalsCountBadge" style="font-size:13px;font-weight:700;color:var(--primary);background:var(--soft);padding:3px 10px;border-radius:20px;display:none;"></span>
     </div>
     <div id="goalsList"></div>
   </div>
@@ -327,15 +394,14 @@
     <button class="btn-cancel" onclick="closeExpenseAnalysis()" style="flex-shrink:0;margin-top:14px;">關閉</button>
   </div>
 
-  <!-- FAB 按鈕區 -->
-  <div style="position:fixed;bottom:24px;right:20px;display:flex;flex-direction:column;gap:12px;align-items:flex-end;">
-    <button onclick="openSheetEditor()" style="width:48px;height:48px;border-radius:50%;background:#6B7280;color:white;border:none;font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,0.2);cursor:pointer;">⚙️</button>
-    <button onclick="openModal(null)" style="width:56px;height:56px;border-radius:50%;background:#3B82F6;color:white;border:none;font-size:28px;box-shadow:0 4px 12px rgba(0,0,0,0.2);cursor:pointer;">＋</button>
+  <!-- FAB -->
+  <div style="position:fixed;bottom:24px;right:20px;">
+    <button onclick="openModal(null)" style="width:56px;height:56px;border-radius:18px;background:var(--primary);color:white;border:none;font-size:30px;box-shadow:0 6px 20px rgba(184,130,50,0.4);cursor:pointer;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;">＋</button>
   </div>
 
 <script>
   // GAS Web App 部署 URL（Deploy > Manage deployments > 複製 URL）
-  const GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxIDAKiig0WOYJiPFZVT95MEcyEJF9_pPYmiAzSo2NiUkTj7ask7hzYyJNWaERhXH_I6A/exec';
+  const GAS_WEBAPP_URL = '/api';
 
   // 呼叫 GAS API（全部走 GET + URL 參數，避免 CORS preflight 問題）
   async function gasAPI(action, params = {}) {
@@ -377,7 +443,7 @@
   // 初始化載入
   async function loadAll() {
     const monthStr = getMonthStr();
-    document.getElementById('monthLabel').textContent = monthStr;
+    document.getElementById('monthLabel').textContent = currentYear + '年 ' + currentMonth + '月';
 
     // 1. 立即從 localStorage 顯示快取（stale-while-revalidate）
     try {
@@ -640,8 +706,10 @@
         const doneB = pctB >= 1 ? 1 : 0;
         return doneA - doneB;
       });
+    const badge = document.getElementById('goalsCountBadge');
+    if (badge) { badge.textContent = active.length + ' 個進行中'; badge.style.display = active.length > 0 ? '' : 'none'; }
     if (active.length === 0) {
-      list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">尚無存錢目標，點右下角 ⚙️ 新增</div>';
+      list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">尚無存錢目標，點右上角設定新增</div>';
       return;
     }
     list.innerHTML = active.map(g => {
@@ -650,18 +718,20 @@
       const pct = Math.min(100, Math.round(saved / target * 100));
       const done = pct >= 100;
       return `<div class="goal-card">
-        <div class="goal-name">${g.name}</div>
-        <div class="goal-deadline">📅 目標日期：${g.deadline}</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+          <div class="goal-name">${g.name}</div>
+          <div class="goal-deadline">${g.deadline}</div>
+        </div>
         <div class="goal-progress-wrap">
           <div class="goal-progress-bar${done ? ' done' : ''}" style="width:${pct}%"></div>
         </div>
         <div class="goal-amounts">
           <span>已存 $${saved.toLocaleString()}</span>
-          <span>${pct}%／目標 $${target.toLocaleString()}</span>
+          <span>${pct}% · $${target.toLocaleString()}</span>
         </div>
         ${done
-          ? '<div style="text-align:center;color:#22C55E;font-weight:bold;padding:6px 0;">🎉 目標達成！</div>'
-          : `<button class="goal-deposit-btn" onclick="openDepositModal('${g.id}','${g.name}',${saved})">💰 本月存入</button>`
+          ? '<div style="text-align:center;color:#6F9E6E;font-weight:800;padding:6px 0;font-size:15px;">目標達成</div>'
+          : `<button class="goal-deposit-btn" onclick="openDepositModal('${g.id}','${g.name}',${saved})">本月存入</button>`
         }
       </div>`;
     }).join('');
@@ -1071,9 +1141,9 @@
       .slice(0, 5);
     if (!items.length || total === 0) { el.innerHTML = ''; return; }
     const title = isExpense ? '本月支出 Top 5 明細' : '本月收入 Top 5 明細';
-    const amtColor = isExpense ? '#EF4444' : '#22C55E';
-    let html = `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #F1F5F9;">
-      <div style="font-size:14px;font-weight:bold;color:#1E3A5F;margin-bottom:8px;">${title}</div>`;
+    const amtColor = isExpense ? '#C9624E' : '#6F9E6E';
+    let html = `<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--hairline);">
+      <div style="font-size:14px;font-weight:800;color:var(--ink);margin-bottom:8px;">${title}</div>`;
     items.forEach((item, i) => {
       const pct = Math.round(item.amount / total * 100);
       const amt = item.amount >= 10000 ? Math.round(item.amount / 1000) + 'k' : item.amount.toLocaleString();
