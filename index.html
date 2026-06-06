@@ -401,7 +401,7 @@
 
 <script>
   // GAS Web App 部署 URL（Deploy > Manage deployments > 複製 URL）
-  const GAS_WEBAPP_URL = window.location.origin + '/api';
+  const GAS_WEBAPP_URL = 'https://accounting-tool-six.vercel.app/api';
 
   // 呼叫 GAS API（全部走 GET + URL 參數，避免 CORS preflight 問題）
   async function gasAPI(action, params = {}) {
@@ -409,8 +409,11 @@
     for (const [k, v] of Object.entries(params)) {
       flat[k] = (typeof v === 'object' && v !== null) ? JSON.stringify(v) : v;
     }
-    const qs = new URLSearchParams({ action, ...flat }).toString();
-    const res = await fetch(`${GAS_WEBAPP_URL}?${qs}`);
+    const parts = ['action=' + encodeURIComponent(action)];
+    for (const [k, v] of Object.entries(flat)) {
+      parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
+    }
+    const res = await fetch(GAS_WEBAPP_URL + '?' + parts.join('&'));
     return res.json();
   }
 
