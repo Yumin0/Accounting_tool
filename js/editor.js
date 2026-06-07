@@ -3,11 +3,13 @@ function openSheetEditor() {
   showEditorView('menu');
   document.getElementById('sheetEditorOverlay').classList.add('show');
   document.getElementById('sheetEditorModal').classList.add('show');
+  lockBodyScroll();
 }
 
 function closeSheetEditor() {
   document.getElementById('sheetEditorModal').classList.remove('show');
   document.getElementById('sheetEditorOverlay').classList.remove('show');
+  unlockBodyScroll();
 }
 
 function showEditorView(view) {

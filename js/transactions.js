@@ -8,12 +8,14 @@ function openModal(dateStr) {
   document.querySelectorAll('#noteChips .note-chip').forEach(b => b.classList.remove('active'));
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('modal').classList.add('show');
+  lockBodyScroll();
   setType('expense');
 }
 
 function closeModal() {
   document.getElementById('modal').classList.remove('show');
   document.getElementById('modalOverlay').classList.remove('show');
+  unlockBodyScroll();
   materializingRecurringId = null;
 }
 
@@ -91,6 +93,7 @@ async function editItem(id) {
   updateCategorySelect(tx.category);
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('modal').classList.add('show');
+  lockBodyScroll();
 }
 
 async function deleteItem(id) {

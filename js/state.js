@@ -25,6 +25,27 @@ let currentEditorCatTab = 'expense';
 let currentRecurType = 'expense';
 let materializingRecurringId = null;
 
+// 開啟底部彈出 Modal/Sheet 時鎖住背景頁面捲動，避免 iOS 觸控把捲動穿透到底層首頁
+// （用計數器處理理論上可能疊開多層 Modal 的情況，最後一層關閉才解鎖並還原捲動位置）
+let bodyScrollLockCount = 0;
+let bodyScrollLockY = 0;
+function lockBodyScroll() {
+  if (bodyScrollLockCount++ > 0) return;
+  bodyScrollLockY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${bodyScrollLockY}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+}
+function unlockBodyScroll() {
+  if (bodyScrollLockCount === 0 || --bodyScrollLockCount > 0) return;
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  window.scrollTo(0, bodyScrollLockY);
+}
+
 function getMonthStr() { return currentYear + '-' + String(currentMonth).padStart(2, '0'); }
 function formatDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 function fmtAmt(n) { return n >= 10000 ? Math.round(n / 1000) + 'k' : n.toLocaleString(); }

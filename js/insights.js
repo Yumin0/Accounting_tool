@@ -26,6 +26,7 @@ async function showInsightHistory() {
   list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">載入中...</div>';
   document.getElementById('insightHistoryOverlay').classList.add('show');
   document.getElementById('insightHistoryModal').classList.add('show');
+  lockBodyScroll();
   try {
     const insights = await gasAPI('getInsights');
     if (!insights.length) {
@@ -45,4 +46,5 @@ async function showInsightHistory() {
 function closeInsightHistory() {
   document.getElementById('insightHistoryModal').classList.remove('show');
   document.getElementById('insightHistoryOverlay').classList.remove('show');
+  unlockBodyScroll();
 }

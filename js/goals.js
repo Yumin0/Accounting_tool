@@ -47,11 +47,13 @@ function openDepositModal(goalId, goalName, currentSaved) {
   document.getElementById('depositAmount').value = '';
   document.getElementById('depositOverlay').classList.add('show');
   document.getElementById('depositModal').classList.add('show');
+  lockBodyScroll();
 }
 
 function closeDepositModal() {
   document.getElementById('depositModal').classList.remove('show');
   document.getElementById('depositOverlay').classList.remove('show');
+  unlockBodyScroll();
   depositingGoalId = null;
 }
 

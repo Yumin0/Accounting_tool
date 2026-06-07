@@ -17,11 +17,13 @@ function openAnalysis(type) {
   switchAnalysisTab('share');
   document.getElementById('analysisOverlay').classList.add('show');
   document.getElementById('analysisModal').classList.add('show');
+  lockBodyScroll();
 }
 
 function closeExpenseAnalysis() {
   document.getElementById('analysisModal').classList.remove('show');
   document.getElementById('analysisOverlay').classList.remove('show');
+  unlockBodyScroll();
 }
 
 function switchAnalysisTab(tab) {
