@@ -562,7 +562,7 @@
 
   function updateSummary() {
     let exp = 0, inc = 0;
-    allTxData.forEach(tx => {
+    allTxData.concat(allProjectedTx).forEach(tx => {
       if (tx.type === 'expense') exp += Number(tx.amount);
       else inc += Number(tx.amount);
     });
