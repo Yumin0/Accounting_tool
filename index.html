@@ -392,20 +392,29 @@
 
     <!-- 固定收支子視圖 -->
     <div id="editorViewRecurring" style="display:none;overflow-y:auto;flex:1;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-weight:bold;font-size:14px;color:#9E9285;">已建立項目</div>
+        <button id="recurAddToggleBtn" onclick="toggleRecurAddForm()" style="padding:7px 16px;background:#E8A33F;color:white;border:none;border-radius:99px;cursor:pointer;font-size:13px;font-weight:800;font-family:inherit;">＋ 新增</button>
+      </div>
       <div id="editorRecurringList" style="margin-bottom:14px;"></div>
-      <div style="background:#FBF7F0;border-radius:16px;padding:14px;">
+      <div id="recurAddFormWrap" style="display:none;background:#FBF7F0;border-radius:16px;padding:14px;">
         <div style="font-weight:bold;margin-bottom:12px;font-size:14px;color:#9E9285;">＋ 新增固定收支</div>
         <div class="type-tabs" style="margin-bottom:12px;">
           <button class="type-tab active-expense" id="recurTabExpense" onclick="setRecurType('expense')">支出</button>
           <button class="type-tab" id="recurTabIncome" onclick="setRecurType('income')">收入</button>
         </div>
         <div class="form-row"><label>金額</label><input id="recurAmount" type="number" inputmode="numeric" placeholder="輸入金額"></div>
-        <div class="form-row"><label>分類</label><select id="recurCategory"></select></div>
-        <div class="form-row"><label>備註</label><input id="recurNote" type="text" placeholder="例：房貸、房租收入"></div>
+        <div class="form-row"><label>分類</label><select id="recurCategory" onchange="renderRecurNoteChips(this.value)"></select></div>
+        <div class="form-row">
+          <label style="margin-bottom:4px;">備註</label>
+          <input id="recurNote" type="text" placeholder="例：房貸、房租收入">
+          <div class="note-chips" id="recurNoteChips"></div>
+        </div>
         <div class="form-row"><label>每月幾號入帳</label><select id="recurDayOfMonth"></select></div>
         <div class="form-row"><label>開始月份</label><input id="recurStartDate" type="month"></div>
         <div class="form-row"><label>結束月份（選填，長期有效可不填）</label><input id="recurEndDate" type="month"></div>
         <button class="btn-submit" id="recurSubmitBtn" onclick="submitRecurringFromEditor()">確認建立</button>
+        <button class="btn-cancel" onclick="toggleRecurAddForm(false)">取消</button>
       </div>
     </div>
 
@@ -928,8 +937,7 @@
     }
     if (view === 'recurring') {
       renderEditorRecurringList();
-      setRecurType('expense');
-      populateRecurDayOfMonthSelect('recurDayOfMonth', 25);
+      toggleRecurAddForm(false);
     }
   }
 
@@ -1046,6 +1054,22 @@
   }
 
   // === 固定收支範本 ===
+  function toggleRecurAddForm(forceShow) {
+    const wrap = document.getElementById('recurAddFormWrap');
+    const btn = document.getElementById('recurAddToggleBtn');
+    const show = forceShow !== undefined ? forceShow : wrap.style.display === 'none';
+    wrap.style.display = show ? '' : 'none';
+    btn.textContent = show ? '收合' : '＋ 新增';
+    if (show) {
+      document.getElementById('recurAmount').value = '';
+      document.getElementById('recurNote').value = '';
+      document.getElementById('recurStartDate').value = '';
+      document.getElementById('recurEndDate').value = '';
+      setRecurType('expense');
+      populateRecurDayOfMonthSelect('recurDayOfMonth', 25);
+    }
+  }
+
   function setRecurType(type) {
     currentRecurType = type;
     document.getElementById('recurTabExpense').className = 'type-tab' + (type === 'expense' ? ' active-expense' : '');
@@ -1060,6 +1084,29 @@
     sel.innerHTML = cats.map(c =>
       `<option value="${c.name}" ${c.name === selectedName ? 'selected' : ''}>${c.icon} ${c.name}</option>`
     ).join('');
+    renderRecurNoteChips(sel.value);
+  }
+
+  function renderRecurNoteChips(catName) {
+    const container = document.getElementById('recurNoteChips');
+    if (!container) return;
+    // 顯示：符合當前分類 OR 未綁定分類（category 為空）的快捷字詞
+    const filtered = allNoteShortcuts.filter(s => !s.category || s.category === catName);
+    container.innerHTML = filtered.map(s =>
+      `<button class="note-chip" onclick="selectRecurNoteChip(this,'${s.text.replace(/'/g, "\\'")}')">${s.text}</button>`
+    ).join('');
+  }
+
+  function selectRecurNoteChip(btn, text) {
+    const noteInput = document.getElementById('recurNote');
+    if (btn.classList.contains('active')) {
+      btn.classList.remove('active');
+      noteInput.value = '';
+    } else {
+      document.querySelectorAll('#recurNoteChips .note-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      noteInput.value = text;
+    }
   }
 
   function populateRecurDayOfMonthSelect(selectId, selectedValue) {
@@ -1203,12 +1250,9 @@
     btn.disabled = true; btn.innerText = "傳送中...";
     try {
       await gasAPI('addRecurringTransaction', { data });
-      document.getElementById('recurAmount').value = '';
-      document.getElementById('recurNote').value = '';
-      document.getElementById('recurStartDate').value = '';
-      document.getElementById('recurEndDate').value = '';
       allRecurring = await gasAPI('getRecurringTransactions');
       renderEditorRecurringList();
+      toggleRecurAddForm(false);
       await loadAll();
     } catch (err) {
       alert("建立失敗");
