@@ -13,7 +13,7 @@ function openAnalysis(type) {
   document.getElementById('analysisTitle').textContent = type === 'expense' ? '消費分析' : '收入分析';
   document.getElementById('analysisMonthLabel').textContent = getMonthStr();
   trendDataCache = null;
-  currentTrendCat = '';
+  currentTrendCat = '__all__';
   switchAnalysisTab('share');
   document.getElementById('analysisOverlay').classList.add('show');
   document.getElementById('analysisModal').classList.add('show');
@@ -158,12 +158,10 @@ async function loadAndRenderTrend() {
       });
     });
     trendDataCache = { months, byCategory };
-    const sorted = Object.keys(byCategory).sort((a, b) =>
-      byCategory[b].reduce((s, v) => s + v, 0) - byCategory[a].reduce((s, v) => s + v, 0));
-    currentTrendCat = sorted[0] || '';
+    currentTrendCat = '__all__';
   } catch (e) {
     trendDataCache = { months, byCategory: {} };
-    currentTrendCat = '';
+    currentTrendCat = '__all__';
   }
   document.getElementById('trendLoading').style.display = 'none';
   renderTrendView();
@@ -176,18 +174,24 @@ function renderTrendView() {
   allCategories.forEach(c => { catMap[c.name] = c.icon; });
   const sortedCats = Object.keys(byCategory).sort((a, b) =>
     byCategory[b].reduce((s, v) => s + v, 0) - byCategory[a].reduce((s, v) => s + v, 0));
-  document.getElementById('trendCatRow').innerHTML = sortedCats.map(name => {
-    const icon = catMap[name] || '';
-    return `<button class="trend-cat-btn${name === currentTrendCat ? ' active' : ''}" onclick="selectTrendCat('${name.replace(/'/g, "\\'")}')">${icon} ${name}</button>`;
-  }).join('');
   if (!sortedCats.length) {
+    document.getElementById('trendCatRow').innerHTML = '';
     document.getElementById('trendEmpty').textContent = currentAnalysisType === 'expense' ? '近 6 個月無支出紀錄' : '近 6 個月無收入紀錄';
     document.getElementById('trendEmpty').style.display = 'block';
     document.getElementById('trendChart').innerHTML = '';
     return;
   }
   document.getElementById('trendEmpty').style.display = 'none';
-  renderTrendChart(byCategory[currentTrendCat] || Array(6).fill(0), months);
+  document.getElementById('trendCatRow').innerHTML =
+    `<button class="trend-cat-btn${currentTrendCat === '__all__' ? ' active' : ''}" onclick="selectTrendCat('__all__')">📊 所有</button>` +
+    sortedCats.map(name => {
+      const icon = catMap[name] || '';
+      return `<button class="trend-cat-btn${name === currentTrendCat ? ' active' : ''}" onclick="selectTrendCat('${name.replace(/'/g, "\\'")}')">${icon} ${name}</button>`;
+    }).join('');
+  const amounts = currentTrendCat === '__all__'
+    ? months.map((_, idx) => sortedCats.reduce((sum, name) => sum + byCategory[name][idx], 0))
+    : (byCategory[currentTrendCat] || Array(6).fill(0));
+  renderTrendChart(amounts, months);
 }
 
 function selectTrendCat(name) {
