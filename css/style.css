@@ -1,0 +1,185 @@
+/* ========================================================================
+   記帳工具樣式表
+   從 index.html 的 <style> 區塊抽出，依功能區塊分段並加上中文說明，
+   未來要調整某個畫面的外觀時，可以先找到對應區塊的註解再修改。
+   ======================================================================== */
+
+/* ---- 設計系統：色彩與陰影變數（CSS 自訂屬性，「蜂蜜金」暖色調主題）---- */
+:root {
+  --bg: #FBF5EC;
+  --surface: #FFFFFF;
+  --field: #FBF7F0;
+  --ink: #3B332A;
+  --muted: #9E9285;
+  --faint: #C7BEB1;
+  --hairline: #EDE3D5;
+  --primary: #E8A33F;
+  --soft: #FBEFD6;
+  --expense: #C9624E;
+  --expense-soft: #F8E3DD;
+  --income: #6F9E6E;
+  --income-soft: #E2EFE1;
+  --shadow-card: 0 6px 20px rgba(120,90,60,0.06);
+}
+
+/* ---- 全域重置與頁面基礎樣式 ---- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', -apple-system, Arial, sans-serif; background: var(--bg); color: var(--ink); font-size: 16px; }
+
+/* ---- 頁首（左上角 Logo + 標題、右上角設定按鈕）---- */
+.header { background: var(--bg); padding: 14px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
+.header-logo { display: flex; align-items: center; gap: 10px; }
+.logo-block { width: 38px; height: 38px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo-block svg { width: 20px; height: 20px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.header-title { font-size: 18px; font-weight: 800; color: var(--ink); }
+.header-settings-btn { width: 38px; height: 38px; background: var(--surface); border: none; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow-card); color: var(--ink); }
+
+/* ---- 月份切換列（上個月／下個月按鈕與當前月份標籤）---- */
+.month-nav-bar { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 4px 16px 14px; }
+.month-nav-btn { width: 32px; height: 32px; background: var(--surface); border: none; border-radius: 8px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; color: var(--ink); box-shadow: var(--shadow-card); font-weight: 700; line-height: 1; }
+.month-label { font-size: 16px; font-weight: 800; color: var(--ink); min-width: 100px; text-align: center; }
+
+/* ---- 本月摘要卡片（可儲蓄金額、支出／收入點擊進入分析）---- */
+.main-summary-card { margin: 0 14px 14px; background: var(--primary); border-radius: 22px; padding: 20px 22px 18px; color: white; box-shadow: var(--shadow-card); }
+.summary-title { font-size: 14px; font-weight: 700; opacity: 0.85; margin-bottom: 6px; }
+.summary-saving { font-size: 38px; font-weight: 900; margin-bottom: 18px; line-height: 1.1; }
+.summary-row { display: flex; align-items: center; }
+.summary-item { flex: 1; cursor: pointer; }
+.summary-item:active { opacity: 0.8; }
+.summary-item-label { font-size: 13px; opacity: 0.8; font-weight: 700; }
+.summary-item-value { font-size: 17px; font-weight: 800; margin-top: 3px; }
+.summary-vline { width: 1px; height: 38px; background: rgba(255,255,255,0.35); margin: 0 18px; }
+
+/* ---- 月曆（星期標頭、日期格子、當日支出/收入小標籤）----
+   .projected 系列樣式對應「預計入帳」（尚未真正寫入資料庫的固定收支預覽），
+   用虛線框＋淡化呈現，與已入帳項目做出區隔。 */
+.calendar { background: var(--surface); border-radius: 22px; margin: 0 14px 14px; box-shadow: var(--shadow-card); overflow: hidden; }
+.month-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); padding: 10px 8px 6px; border-bottom: 1px solid var(--hairline); }
+.month-weekday { text-align: center; font-size: 13px; color: var(--muted); font-weight: 700; }
+.month-weekday.weekend { color: var(--primary); }
+.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.week-row-line { grid-column: 1 / -1; height: 1px; background: var(--hairline); }
+.month-day { min-height: 64px; padding: 6px 3px 4px; background: var(--surface); cursor: pointer; display: flex; flex-direction: column; align-items: center; }
+.month-day.empty-cell { cursor: default; }
+.month-day.future { color: var(--muted); }
+.d-num { font-size: 14px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.month-day.today .d-num { background: var(--primary); color: white; font-weight: 900; }
+.d-content { width: 100%; margin-top: 3px; display: flex; flex-direction: column; gap: 2px; }
+.d-exp { font-size: 10px; background: var(--expense-soft); color: var(--expense); border-radius: 6px; text-align: center; padding: 1px 2px; font-weight: 700; }
+.d-inc { font-size: 10px; background: var(--income-soft); color: var(--income); border-radius: 6px; text-align: center; padding: 1px 2px; font-weight: 700; }
+.d-exp.projected, .d-inc.projected { background: transparent; border: 1px dashed currentColor; opacity: 0.6; }
+.detail-item.projected { opacity: 0.6; }
+.projected-badge { display: inline-block; font-size: 11px; font-weight: 700; color: var(--muted); background: var(--field); border: 1px dashed var(--hairline); border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+
+/* ---- 明細面板（點選某天後展開的當日收支清單）---- */
+.detail-panel { background: var(--surface); border-radius: 20px; margin: 0 14px 14px; box-shadow: var(--shadow-card); overflow: hidden; }
+.detail-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
+.detail-item { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
+.detail-item:last-child { border-bottom: none; }
+.di-icon { font-size: 20px; width: 32px; }
+.di-info { flex: 1; }
+.di-cat { font-size: 14px; font-weight: 700; color: var(--ink); }
+.di-meta { font-size: 12px; color: var(--muted); }
+.di-amt { font-weight: 800; color: var(--expense); }
+.di-amt.income { color: var(--income); }
+
+/* ---- 拖曳把手（所有由下往上彈出的 Modal 共用的小橫條）---- */
+.drag-bar { width: 38px; height: 4px; background: #EDE3D5; border-radius: 2px; margin: 0 auto 16px; flex-shrink: 0; }
+
+/* ---- 通用 Modal／表單元件樣式（新增記錄、存入金額等共用底層彈窗外觀）----
+   各功能各自的 Modal（管理資料、洞察歷史、消費分析）有獨立區塊，
+   但都沿用這裡的 .modal-overlay / .modal 顯示與滑入動畫模式。 */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(50,36,20,0.5); z-index: 100; }
+.modal-overlay.show { display: block; }
+.modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; }
+.modal.show { transform: translateY(0); }
+.form-row { margin-bottom: 12px; }
+.form-row label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.form-row input, .form-row select { width: 100%; padding: 10px; border: 1px solid var(--hairline); border-radius: 13px; font-size: 16px; font-family: inherit; background: var(--field); color: var(--ink); }
+.type-tabs { display: flex; border-radius: 99px; overflow: hidden; background: var(--field); padding: 4px; margin-bottom: 12px; gap: 4px; }
+.type-tab { flex: 1; padding: 10px; border-radius: 99px; border: none; background: transparent; cursor: pointer; text-align: center; font-weight: 700; font-family: inherit; font-size: 15px; color: var(--muted); }
+.type-tab.active-expense { background: var(--primary); color: white; }
+.type-tab.active-income  { background: var(--primary); color: white; }
+.btn-submit { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 16px; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 16px; }
+.btn-cancel { width: 100%; margin-top: 10px; background: none; border: none; color: var(--muted); cursor: pointer; font-family: inherit; font-size: 15px; }
+.btn-sm { padding: 4px 10px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--surface); font-size: 12px; cursor: pointer; color: var(--ink); font-family: inherit; }
+.category-btns { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; }
+.cat-btn { flex-shrink: 0; padding: 8px 10px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface); cursor: pointer; font-size: 14px; white-space: nowrap; font-family: inherit; color: var(--ink); }
+.cat-btn.active { background: var(--soft); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+
+/* ---- 存錢目標（卡片清單：名稱、期限、進度條、存入按鈕）---- */
+.goals-section { padding: 0 14px 90px; }
+.goals-title { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.goal-card { background: var(--surface); border-radius: 20px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-card); }
+.goal-name { font-size: 15px; font-weight: 800; color: var(--ink); }
+.goal-deadline { font-size: 12px; color: var(--muted); }
+.goal-progress-wrap { background: var(--hairline); border-radius: 20px; height: 8px; margin-bottom: 8px; overflow: hidden; }
+.goal-progress-bar { height: 8px; border-radius: 20px; background: var(--primary); transition: width 0.4s ease; }
+.goal-progress-bar.done { background: var(--income); }
+.goal-amounts { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.goal-deposit-btn { width: 100%; padding: 10px; background: var(--soft); color: var(--primary); border: none; border-radius: 16px; font-weight: 800; cursor: pointer; font-size: 14px; font-family: inherit; }
+.goal-deposit-btn:active { opacity: 0.8; }
+
+/* ---- 快捷備註 chip（新增/編輯記錄表單中可一鍵帶入備註的小標籤）---- */
+.note-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.note-chip { padding: 5px 12px; background: var(--bg); border: 1px solid var(--hairline); border-radius: 20px; font-size: 14px; cursor: pointer; color: var(--ink); white-space: nowrap; font-family: inherit; }
+.note-chip.active { background: var(--soft); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+
+/* ---- 管理資料彈窗（設定按鈕點開的底層外殼：主選單 + 各子視圖共用樣式）----
+   涵蓋存錢目標／分類管理／快捷備註／固定收支四個子視圖會用到的選單項目、
+   分類分頁按鈕等樣式；各子視圖內各自的版面大多是 index.html 上的 inline style。 */
+.sheet-editor-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(50,36,20,0.5); z-index: 200; }
+.sheet-editor-overlay.show { display: block; }
+.sheet-editor-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 201; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+.sheet-editor-modal.show { transform: translateY(0); }
+.editor-menu-item { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--hairline); border-radius: 16px; margin-bottom: 10px; cursor: pointer; background: var(--field); width: 100%; text-align: left; font-family: inherit; }
+.editor-menu-item:active { background: var(--bg); }
+.editor-cat-tab { flex: 1; padding: 8px; border-radius: 99px; border: none; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit; text-align: center; }
+.editor-cat-tab.active-expense { background: var(--primary); color: white; }
+.editor-cat-tab.active-income { background: var(--primary); color: white; }
+.editor-cat-tab.inactive { background: transparent; color: var(--muted); }
+
+/* ---- 每日洞察區塊（首頁底部的「✨ 產生洞察」卡片與按鈕列）---- */
+.insight-section { padding: 8px 14px 0; }
+.insight-btn-row { display: flex; gap: 10px; }
+.insight-btn { flex: 3; padding: 14px 10px; background: var(--ink); color: white; border: none; border-radius: 16px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; letter-spacing: 0.3px; }
+.insight-btn:active { opacity: 0.85; }
+.insight-btn:disabled { opacity: 0.6; cursor: default; }
+.insight-history-btn { flex: 2; padding: 14px 10px; background: var(--surface); color: var(--ink); border: 1px solid var(--hairline); border-radius: 16px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: var(--shadow-card); }
+.insight-history-btn:active { opacity: 0.88; }
+.insight-card { background: var(--soft); border: 1px solid var(--hairline); border-radius: 16px; padding: 16px; margin-top: 10px; }
+.insight-text { font-size: 15px; line-height: 1.75; color: var(--ink); white-space: pre-wrap; }
+.insight-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.insight-time { font-size: 12px; color: var(--muted); }
+.insight-history-link { font-size: 13px; color: var(--primary); cursor: pointer; font-weight: 700; }
+.insight-history-link:active { opacity: 0.7; }
+
+/* ---- 洞察歷史紀錄 Modal（「📋 歷史紀錄」按鈕點開的清單彈窗）---- */
+.insight-history-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(50,36,20,0.5); z-index: 100; }
+.insight-history-overlay.show { display: block; }
+.insight-history-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 75vh; display: flex; flex-direction: column; }
+.insight-history-modal.show { transform: translateY(0); }
+.insight-history-item { padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+.insight-history-item:last-child { border-bottom: none; }
+.insight-history-date { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.insight-history-text { font-size: 14px; line-height: 1.65; color: var(--ink); white-space: pre-wrap; }
+
+/* ---- 消費／收入分析 Modal（甜甜圈圖＋圖例＋Top 5、近 6 個月趨勢折線圖）---- */
+.analysis-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(50,36,20,0.5); z-index: 100; }
+.analysis-overlay.show { display: block; }
+.analysis-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 85vh; display: flex; flex-direction: column; }
+.analysis-modal.show { transform: translateY(0); }
+.analysis-chart-area { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+.analysis-legend { flex: 1; overflow-y: auto; max-height: 180px; }
+.analysis-legend-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--hairline); font-size: 14px; }
+.analysis-legend-item:last-child { border-bottom: none; }
+.analysis-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.analysis-legend-name { flex: 1; color: var(--ink); }
+.analysis-legend-amt { font-weight: 700; color: var(--ink); text-align: right; white-space: nowrap; }
+.analysis-legend-pct { color: var(--muted); font-size: 13px; min-width: 42px; text-align: right; }
+.analysis-tab-row { display: flex; border-radius: 99px; overflow: hidden; background: var(--field); padding: 4px; flex-shrink: 0; margin-bottom: 14px; gap: 4px; }
+.analysis-tab { flex: 1; padding: 8px; text-align: center; font-size: 14px; font-weight: 700; cursor: pointer; background: transparent; border: none; color: var(--muted); font-family: inherit; border-radius: 99px; }
+.analysis-tab.active { background: var(--primary); color: white; }
+.trend-cat-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.trend-cat-btn { padding: 5px 12px; border: 1px solid var(--hairline); border-radius: 20px; font-size: 13px; cursor: pointer; background: var(--surface); color: var(--ink); white-space: nowrap; font-family: inherit; }
+.trend-cat-btn.active { background: var(--primary); border-color: var(--primary); color: white; font-weight: 700; }
