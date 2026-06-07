@@ -17,8 +17,10 @@
     :root {
       --bg: #FBF5EC;
       --surface: #FFFFFF;
+      --field: #FBF7F0;
       --ink: #3B332A;
       --muted: #9E9285;
+      --faint: #C7BEB1;
       --hairline: #EDE3D5;
       --primary: #E8A33F;
       --soft: #FBEFD6;
@@ -83,14 +85,17 @@
     .di-amt { font-weight: 800; color: var(--expense); }
     .di-amt.income { color: var(--income); }
 
+    /* Drag bar */
+    .drag-bar { width: 38px; height: 4px; background: #EDE3D5; border-radius: 2px; margin: 0 auto 16px; flex-shrink: 0; }
+
     /* Modals */
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(50,36,20,0.5); z-index: 100; }
     .modal-overlay.show { display: block; }
-    .modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; }
+    .modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; }
     .modal.show { transform: translateY(0); }
     .form-row { margin-bottom: 12px; }
     .form-row label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
-    .form-row input, .form-row select { width: 100%; padding: 10px; border: 1px solid var(--hairline); border-radius: 10px; font-size: 16px; font-family: inherit; background: var(--bg); color: var(--ink); }
+    .form-row input, .form-row select { width: 100%; padding: 10px; border: 1px solid var(--hairline); border-radius: 13px; font-size: 16px; font-family: inherit; background: var(--field); color: var(--ink); }
     .type-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
     .type-tab { flex: 1; padding: 10px; border-radius: 16px; border: 1px solid var(--hairline); background: var(--surface); cursor: pointer; text-align: center; font-weight: 700; font-family: inherit; font-size: 15px; color: var(--muted); }
     .type-tab.active-expense { background: var(--expense-soft); border-color: var(--expense); color: var(--expense); }
@@ -121,11 +126,11 @@
     .note-chip.active { background: var(--soft); border-color: var(--primary); color: var(--primary); font-weight: 700; }
 
     /* Sheet editor */
-    .sheet-editor-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; }
+    .sheet-editor-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(50,36,20,0.5); z-index: 200; }
     .sheet-editor-overlay.show { display: block; }
-    .sheet-editor-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 201; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+    .sheet-editor-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 201; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
     .sheet-editor-modal.show { transform: translateY(0); }
-    .editor-menu-item { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--hairline); border-radius: 16px; margin-bottom: 10px; cursor: pointer; background: var(--surface); width: 100%; text-align: left; font-family: inherit; }
+    .editor-menu-item { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--hairline); border-radius: 16px; margin-bottom: 10px; cursor: pointer; background: var(--field); width: 100%; text-align: left; font-family: inherit; }
     .editor-menu-item:active { background: var(--bg); }
     .editor-cat-tab { flex: 1; padding: 8px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit; }
     .editor-cat-tab.active-expense { background: var(--expense-soft); border: 1px solid var(--expense); color: var(--expense); }
@@ -135,7 +140,7 @@
     /* Insight */
     .insight-section { padding: 8px 14px 0; }
     .insight-btn-row { display: flex; gap: 10px; }
-    .insight-btn { flex: 3; padding: 14px 10px; background: var(--ink); color: white; border: none; border-radius: 16px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; letter-spacing: 0.3px; }
+    .insight-btn { flex: 3; padding: 14px 10px; background: var(--ink); color: white; border: none; border-radius: 16px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; letter-spacing: 0.3px; }
     .insight-btn:active { opacity: 0.85; }
     .insight-btn:disabled { opacity: 0.6; cursor: default; }
     .insight-history-btn { flex: 2; padding: 14px 10px; background: var(--surface); color: var(--ink); border: 1px solid var(--hairline); border-radius: 16px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: var(--shadow-card); }
@@ -148,9 +153,9 @@
     .insight-history-link:active { opacity: 0.7; }
 
     /* Insight history modal */
-    .insight-history-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; }
+    .insight-history-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(50,36,20,0.5); z-index: 100; }
     .insight-history-overlay.show { display: block; }
-    .insight-history-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 75vh; display: flex; flex-direction: column; }
+    .insight-history-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 75vh; display: flex; flex-direction: column; }
     .insight-history-modal.show { transform: translateY(0); }
     .insight-history-item { padding: 12px 0; border-bottom: 1px solid var(--hairline); }
     .insight-history-item:last-child { border-bottom: none; }
@@ -158,9 +163,9 @@
     .insight-history-text { font-size: 14px; line-height: 1.65; color: var(--ink); white-space: pre-wrap; }
 
     /* Analysis modal */
-    .analysis-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; }
+    .analysis-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(50,36,20,0.5); z-index: 100; }
     .analysis-overlay.show { display: block; }
-    .analysis-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 85vh; display: flex; flex-direction: column; }
+    .analysis-modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px; transform: translateY(100%); transition: transform 0.3s ease; z-index: 101; max-height: 85vh; display: flex; flex-direction: column; }
     .analysis-modal.show { transform: translateY(0); }
     .analysis-chart-area { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
     .analysis-legend { flex: 1; overflow-y: auto; max-height: 180px; }
@@ -170,12 +175,12 @@
     .analysis-legend-name { flex: 1; color: var(--ink); }
     .analysis-legend-amt { font-weight: 700; color: var(--ink); text-align: right; white-space: nowrap; }
     .analysis-legend-pct { color: var(--muted); font-size: 13px; min-width: 42px; text-align: right; }
-    .analysis-tab-row { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid var(--hairline); flex-shrink: 0; margin-bottom: 14px; }
-    .analysis-tab { flex: 1; padding: 9px; text-align: center; font-size: 14px; font-weight: 700; cursor: pointer; background: var(--surface); border: none; color: var(--muted); font-family: inherit; }
-    .analysis-tab.active { background: var(--ink); color: white; }
+    .analysis-tab-row { display: flex; border-radius: 99px; overflow: hidden; background: var(--field); padding: 4px; flex-shrink: 0; margin-bottom: 14px; gap: 4px; }
+    .analysis-tab { flex: 1; padding: 8px; text-align: center; font-size: 14px; font-weight: 700; cursor: pointer; background: transparent; border: none; color: var(--muted); font-family: inherit; border-radius: 99px; }
+    .analysis-tab.active { background: var(--primary); color: white; }
     .trend-cat-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
     .trend-cat-btn { padding: 5px 12px; border: 1px solid var(--hairline); border-radius: 20px; font-size: 13px; cursor: pointer; background: var(--surface); color: var(--ink); white-space: nowrap; font-family: inherit; }
-    .trend-cat-btn.active { background: var(--ink); border-color: var(--ink); color: white; font-weight: 700; }
+    .trend-cat-btn.active { background: var(--primary); border-color: var(--primary); color: white; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -244,7 +249,8 @@
   <!-- 洞察歷史 Modal -->
   <div class="insight-history-overlay" id="insightHistoryOverlay" onclick="closeInsightHistory()"></div>
   <div class="insight-history-modal" id="insightHistoryModal">
-    <div style="font-weight:bold;font-size:16px;margin-bottom:16px;flex-shrink:0;">✨ 洞察歷史紀錄</div>
+    <div class="drag-bar"></div>
+    <div style="font-weight:bold;font-size:16px;margin-bottom:16px;flex-shrink:0;">洞察歷史紀錄</div>
     <div id="insightHistoryList" style="overflow-y:auto;flex:1;"></div>
     <button class="btn-cancel" onclick="closeInsightHistory()" style="flex-shrink:0;margin-top:14px;">關閉</button>
   </div>
@@ -260,20 +266,22 @@
   <!-- 存入金額 Modal -->
   <div class="modal-overlay" id="depositOverlay" onclick="closeDepositModal()"></div>
   <div class="modal" id="depositModal">
-    <div style="font-weight:bold;margin-bottom:15px;">💰 本月存入</div>
-    <div id="depositGoalName" style="color:#555;margin-bottom:12px;font-size:14px;"></div>
+    <div class="drag-bar"></div>
+    <div style="font-weight:bold;margin-bottom:15px;">本月存入</div>
+    <div id="depositGoalName" style="color:var(--muted);margin-bottom:12px;font-size:14px;"></div>
     <div class="form-row"><label>存入金額</label><input id="depositAmount" type="number" inputmode="numeric" placeholder="輸入金額"></div>
-    <button class="btn-submit" id="depositSubmitBtn" onclick="submitDeposit()">✅ 確認存入</button>
+    <button class="btn-submit" id="depositSubmitBtn" onclick="submitDeposit()">確認存入</button>
     <button class="btn-cancel" onclick="closeDepositModal()">取消</button>
   </div>
 
   <!-- 新增記錄 Modal -->
   <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
   <div class="modal" id="modal">
+    <div class="drag-bar"></div>
     <div id="modalTitle" style="font-weight:bold; margin-bottom:15px;">新增記錄</div>
     <div class="type-tabs">
-      <button class="type-tab active-expense" id="tabExpense" onclick="setType('expense')">💸 支出</button>
-      <button class="type-tab" id="tabIncome"  onclick="setType('income')">💰 收入</button>
+      <button class="type-tab active-expense" id="tabExpense" onclick="setType('expense')">支出</button>
+      <button class="type-tab" id="tabIncome"  onclick="setType('income')">收入</button>
     </div>
     <div class="form-row"><label>日期</label><input id="txDate" type="date"></div>
     <div class="form-row"><label>金額</label><input id="txAmount" type="number" inputmode="numeric"></div>
@@ -283,70 +291,77 @@
       <input id="txNote" type="text">
       <div class="note-chips" id="noteChips"></div>
     </div>
-    <button class="btn-submit" id="submitBtn" onclick="submitTransaction()">✅ 確認記錄</button>
+    <button class="btn-submit" id="submitBtn" onclick="submitTransaction()">確認記錄</button>
     <button class="btn-cancel" onclick="closeModal()">取消</button>
   </div>
 
   <!-- 統一資料管理 Modal（最外層，z-index 最高）-->
   <div class="sheet-editor-overlay" id="sheetEditorOverlay" onclick="closeSheetEditor()"></div>
   <div class="sheet-editor-modal" id="sheetEditorModal">
+    <div class="drag-bar"></div>
     <!-- Header -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0;">
-      <button id="sheetEditorBack" onclick="showEditorView('menu')" style="display:none;background:none;border:none;font-size:20px;cursor:pointer;padding:4px;line-height:1;">◀</button>
+      <button id="sheetEditorBack" onclick="showEditorView('menu')" style="display:none;background:none;border:none;cursor:pointer;padding:4px;line-height:1;"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#3B332A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 4 7 10 13 16"/></svg></button>
       <div id="sheetEditorTitle" style="font-weight:bold;font-size:16px;">管理資料</div>
     </div>
 
     <!-- 主選單 -->
     <div id="editorViewMenu" style="overflow-y:auto;flex:1;">
       <button class="editor-menu-item" onclick="showEditorView('goals')">
-        <span style="font-size:24px;">🎯</span>
+        <div style="width:42px;height:42px;background:#FBEFD6;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#E8A33F" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="9"/><circle cx="11" cy="11" r="5"/><circle cx="11" cy="11" r="1.5" fill="#E8A33F" stroke="none"/></svg>
+        </div>
         <div style="flex:1;">
           <div style="font-weight:bold;margin-bottom:2px;">存錢目標</div>
-          <div style="font-size:13px;color:#888;">新增、查看存錢目標</div>
+          <div style="font-size:13px;color:#9E9285;">新增、查看存錢目標</div>
         </div>
-        <span style="color:#C7C7CC;">▶</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#C7BEB1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"/></svg>
       </button>
       <button class="editor-menu-item" onclick="showEditorView('categories')">
-        <span style="font-size:24px;">🗂️</span>
+        <div style="width:42px;height:42px;background:#FBEFD6;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#E8A33F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="12" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="12" width="7" height="7" rx="1.5"/><rect x="12" y="12" width="7" height="7" rx="1.5"/></svg>
+        </div>
         <div style="flex:1;">
           <div style="font-weight:bold;margin-bottom:2px;">分類管理</div>
-          <div style="font-size:13px;color:#888;">新增、刪除收支分類</div>
+          <div style="font-size:13px;color:#9E9285;">新增、刪除收支分類</div>
         </div>
-        <span style="color:#C7C7CC;">▶</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#C7BEB1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"/></svg>
       </button>
       <button class="editor-menu-item" onclick="showEditorView('shortcuts')">
-        <span style="font-size:24px;">✏️</span>
+        <div style="width:42px;height:42px;background:#FBEFD6;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#E8A33F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l3 3-11 11H5v-3L16 3z"/></svg>
+        </div>
         <div style="flex:1;">
           <div style="font-weight:bold;margin-bottom:2px;">快捷備註</div>
-          <div style="font-size:13px;color:#888;">管理備註快捷字詞</div>
+          <div style="font-size:13px;color:#9E9285;">管理備註快捷字詞</div>
         </div>
-        <span style="color:#C7C7CC;">▶</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#C7BEB1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"/></svg>
       </button>
     </div>
 
     <!-- 存錢目標子視圖 -->
     <div id="editorViewGoals" style="display:none;overflow-y:auto;flex:1;">
       <div id="editorGoalsList" style="margin-bottom:14px;"></div>
-      <div style="background:#F8FAFC;border-radius:12px;padding:14px;">
-        <div style="font-weight:bold;margin-bottom:12px;font-size:14px;color:#6B7280;">＋ 新增存錢目標</div>
+      <div style="background:#FBF7F0;border-radius:16px;padding:14px;">
+        <div style="font-weight:bold;margin-bottom:12px;font-size:14px;color:#9E9285;">＋ 新增存錢目標</div>
         <div class="form-row"><label>目標名稱</label><input id="editorGoalName" type="text" placeholder="例：日本旅遊基金"></div>
         <div class="form-row"><label>目標金額</label><input id="editorGoalTarget" type="number" inputmode="numeric" placeholder="輸入金額"></div>
         <div class="form-row"><label>預計達成日期</label><input id="editorGoalDeadline" type="date"></div>
-        <button class="btn-submit" id="editorGoalSubmitBtn" onclick="submitGoalFromEditor()">✅ 確認建立</button>
+        <button class="btn-submit" id="editorGoalSubmitBtn" onclick="submitGoalFromEditor()">確認建立</button>
       </div>
     </div>
 
     <!-- 分類管理子視圖 -->
     <div id="editorViewCategories" style="display:none;overflow-y:auto;flex:1;">
       <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <button id="editorCatTabExpense" class="editor-cat-tab active-expense" onclick="switchEditorCatTab('expense')">💸 支出</button>
-        <button id="editorCatTabIncome" class="editor-cat-tab inactive" onclick="switchEditorCatTab('income')">💰 收入</button>
+        <button id="editorCatTabExpense" class="editor-cat-tab active-expense" onclick="switchEditorCatTab('expense')">支出</button>
+        <button id="editorCatTabIncome" class="editor-cat-tab inactive" onclick="switchEditorCatTab('income')">收入</button>
       </div>
       <div id="editorCatList" style="margin-bottom:14px;"></div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input id="editorCatIcon" type="text" placeholder="😀" style="width:56px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:18px;text-align:center;">
-        <input id="editorCatName" type="text" placeholder="分類名稱" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:16px;">
-        <button onclick="addCategory()" style="padding:10px 14px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;font-size:14px;">新增</button>
+        <input id="editorCatIcon" type="text" placeholder="😀" style="width:56px;padding:10px;border:1px solid #EDE3D5;border-radius:13px;font-size:18px;text-align:center;background:#FBF7F0;color:#3B332A;">
+        <input id="editorCatName" type="text" placeholder="分類名稱" style="flex:1;padding:10px;border:1px solid #EDE3D5;border-radius:13px;font-size:16px;background:#FBF7F0;color:#3B332A;">
+        <button onclick="addCategory()" style="padding:10px 16px;background:#E8A33F;color:white;border:none;border-radius:13px;cursor:pointer;white-space:nowrap;font-size:14px;font-weight:800;">新增</button>
       </div>
     </div>
 
@@ -354,10 +369,10 @@
     <div id="editorViewShortcuts" style="display:none;overflow-y:auto;flex:1;">
       <div id="editorShortcutList" style="margin-bottom:16px;"></div>
       <div style="display:flex;flex-direction:column;gap:6px;">
-        <select id="editorNewShortcutCat" style="padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:white;color:#374151;"></select>
+        <select id="editorNewShortcutCat" style="padding:10px;border:1px solid #EDE3D5;border-radius:13px;font-size:14px;background:#FBF7F0;color:#3B332A;"></select>
         <div style="display:flex;gap:8px;">
-          <input id="editorNewShortcutText" type="text" placeholder="輸入新快捷字詞" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:16px;">
-          <button onclick="addShortcutFromEditor()" style="padding:10px 16px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;white-space:nowrap;">新增</button>
+          <input id="editorNewShortcutText" type="text" placeholder="輸入新快捷字詞" style="flex:1;padding:10px;border:1px solid #EDE3D5;border-radius:13px;font-size:16px;background:#FBF7F0;color:#3B332A;">
+          <button onclick="addShortcutFromEditor()" style="padding:10px 18px;background:#E8A33F;color:white;border:none;border-radius:13px;cursor:pointer;font-size:14px;font-weight:800;white-space:nowrap;">新增</button>
         </div>
       </div>
     </div>
@@ -368,9 +383,10 @@
   <!-- 消費分析 Modal -->
   <div class="analysis-overlay" id="analysisOverlay" onclick="closeExpenseAnalysis()"></div>
   <div class="analysis-modal" id="analysisModal">
+    <div class="drag-bar"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
-      <div style="font-weight:bold;font-size:16px;" id="analysisTitle">📊 消費分析</div>
-      <div style="font-size:13px;color:#6B7280;" id="analysisMonthLabel"></div>
+      <div style="font-weight:bold;font-size:16px;" id="analysisTitle">消費分析</div>
+      <div style="font-size:13px;color:#9E9285;" id="analysisMonthLabel"></div>
     </div>
     <div class="analysis-tab-row">
       <button class="analysis-tab active" id="analysisTabShare" onclick="switchAnalysisTab('share')">佔比</button>
@@ -647,7 +663,7 @@
       alert("儲存失敗");
     } finally {
       btn.disabled = false;
-      btn.innerText = "✅ 確認記錄";
+      btn.innerText = "確認記錄";
     }
   }
 
@@ -779,7 +795,7 @@
     } catch (err) {
       alert("儲存失敗");
     } finally {
-      btn.disabled = false; btn.innerText = "✅ 確認存入";
+      btn.disabled = false; btn.innerText = "確認存入";
     }
   }
 
@@ -833,22 +849,22 @@
     const list = document.getElementById('editorGoalsList');
     const active = allGoals.filter(g => g.status === 'active');
     if (!active.length) {
-      list.innerHTML = '<div style="color:#aaa;font-size:14px;margin-bottom:8px;">尚無存錢目標</div>';
+      list.innerHTML = '<div style="color:#9E9285;font-size:14px;margin-bottom:8px;">尚無存錢目標</div>';
       return;
     }
     list.innerHTML = active.map(g => {
       const saved = Number(g.saved_amount) || 0;
       const target = Number(g.target_amount) || 1;
       const pct = Math.min(100, Math.round(saved / target * 100));
-      return `<div id="goal-row-${g.id}" style="border:1px solid #E5E5EA;border-radius:10px;margin-bottom:8px;background:white;overflow:hidden;">
+      return `<div id="goal-row-${g.id}" style="border:1px solid #EDE3D5;border-radius:13px;margin-bottom:8px;background:white;overflow:hidden;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;">
           <div>
             <div style="font-weight:bold;font-size:14px;">${g.name}</div>
-            <div style="font-size:12px;color:#888;">已存 $${saved.toLocaleString()} / $${target.toLocaleString()} (${pct}%) · ${g.deadline}</div>
+            <div style="font-size:12px;color:#9E9285;">已存 $${saved.toLocaleString()} / $${target.toLocaleString()} (${pct}%) · ${g.deadline}</div>
           </div>
           <div style="display:flex;gap:6px;">
-            <button onclick="editGoal('${g.id}')" style="background:none;border:none;color:#3B82F6;cursor:pointer;font-size:16px;padding:4px;">✏️</button>
-            <button onclick="deleteGoal('${g.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:16px;padding:4px;">🗑️</button>
+            <button onclick="editGoal('${g.id}')" style="background:none;border:none;cursor:pointer;padding:4px;line-height:1;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9E9285" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2l3 3-8 8H3v-3l8-8z"/></svg></button>
+            <button onclick="deleteGoal('${g.id}')" style="background:none;border:none;cursor:pointer;padding:4px;line-height:1;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#C9624E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 5 14 5"/><path d="M4 5V3h8v2"/><rect x="3" y="5" width="10" height="9" rx="1.5"/><line x1="6" y1="8" x2="6" y2="11"/><line x1="10" y1="8" x2="10" y2="11"/></svg></button>
           </div>
         </div>
       </div>`;
@@ -862,14 +878,14 @@
     row.innerHTML = `
       <div style="padding:10px 12px;">
         <div style="display:flex;flex-direction:column;gap:6px;">
-          <input id="edit-goal-name-${id}" value="${g.name}" placeholder="目標名稱" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;width:100%;">
+          <input id="edit-goal-name-${id}" value="${g.name}" placeholder="目標名稱" style="padding:8px;border:1px solid #EDE3D5;border-radius:10px;font-size:14px;width:100%;background:#FBF7F0;color:#3B332A;">
           <div style="display:flex;gap:6px;">
-            <input id="edit-goal-target-${id}" type="number" value="${g.target_amount}" placeholder="目標金額" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
-            <input id="edit-goal-deadline-${id}" type="date" value="${g.deadline}" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+            <input id="edit-goal-target-${id}" type="number" value="${g.target_amount}" placeholder="目標金額" style="flex:1;padding:8px;border:1px solid #EDE3D5;border-radius:10px;font-size:14px;background:#FBF7F0;color:#3B332A;">
+            <input id="edit-goal-deadline-${id}" type="date" value="${g.deadline}" style="flex:1;padding:8px;border:1px solid #EDE3D5;border-radius:10px;font-size:14px;background:#FBF7F0;color:#3B332A;">
           </div>
           <div style="display:flex;gap:6px;">
-            <button onclick="saveGoalEdit('${id}')" style="flex:1;padding:8px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">✅ 儲存</button>
-            <button onclick="renderEditorGoalsList()" style="flex:1;padding:8px;background:#F1F5F9;color:#555;border:none;border-radius:8px;cursor:pointer;font-size:13px;">取消</button>
+            <button onclick="saveGoalEdit('${id}')" style="flex:1;padding:8px;background:#E8A33F;color:white;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:bold;">儲存</button>
+            <button onclick="renderEditorGoalsList()" style="flex:1;padding:8px;background:#FBF7F0;color:#9E9285;border:none;border-radius:10px;cursor:pointer;font-size:13px;">取消</button>
           </div>
         </div>
       </div>`;
@@ -917,7 +933,7 @@
     } catch (err) {
       alert("建立失敗");
     } finally {
-      btn.disabled = false; btn.innerText = "✅ 確認建立";
+      btn.disabled = false; btn.innerText = "確認建立";
     }
   }
 
@@ -929,6 +945,11 @@
       renderGoals();
       renderEditorGoalsList();
     } catch(e) { alert("刪除失敗"); }
+  }
+
+  function getCatColor(catName) {
+    const idx = allCategories.findIndex(c => c.name === catName);
+    return ANALYSIS_COLORS[idx >= 0 ? idx % ANALYSIS_COLORS.length : 0];
   }
 
   // --- 分類管理子視圖 ---
@@ -943,20 +964,24 @@
     const list = document.getElementById('editorCatList');
     const cats = allCategories.filter(c => c.type === currentEditorCatTab);
     if (!cats.length) {
-      list.innerHTML = '<div style="color:#aaa;font-size:14px;margin-bottom:8px;">尚無分類</div>';
+      list.innerHTML = '<div style="color:#9E9285;font-size:14px;margin-bottom:8px;">尚無分類</div>';
       return;
     }
-    list.innerHTML = cats.map(c =>
-      `<div id="cat-row-${c.id}" style="border:1px solid #E5E5EA;border-radius:10px;margin-bottom:8px;background:white;overflow:hidden;">
+    list.innerHTML = cats.map(c => {
+      const dotColor = getCatColor(c.name);
+      return `<div id="cat-row-${c.id}" style="border:1px solid #EDE3D5;border-radius:13px;margin-bottom:8px;background:white;overflow:hidden;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;">
-          <span style="font-size:15px;">${c.icon} ${c.name}</span>
+          <span style="display:flex;align-items:center;gap:8px;font-size:15px;">
+            <span style="width:9px;height:9px;border-radius:50%;background:${dotColor};flex-shrink:0;display:inline-block;"></span>
+            ${c.icon} ${c.name}
+          </span>
           <div style="display:flex;gap:6px;">
-            <button onclick="editCategory('${c.id}')" style="background:none;border:none;color:#3B82F6;cursor:pointer;font-size:16px;padding:4px;">✏️</button>
-            <button onclick="deleteCategory('${c.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:16px;padding:4px;">🗑️</button>
+            <button onclick="editCategory('${c.id}')" style="background:none;border:none;cursor:pointer;padding:4px;line-height:1;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9E9285" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2l3 3-8 8H3v-3l8-8z"/></svg></button>
+            <button onclick="deleteCategory('${c.id}')" style="background:none;border:none;cursor:pointer;padding:4px;line-height:1;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#C9624E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 5 14 5"/><path d="M4 5V3h8v2"/><rect x="3" y="5" width="10" height="9" rx="1.5"/><line x1="6" y1="8" x2="6" y2="11"/><line x1="10" y1="8" x2="10" y2="11"/></svg></button>
           </div>
         </div>
-      </div>`
-    ).join('');
+      </div>`;
+    }).join('');
   }
 
   function editCategory(id) {
@@ -966,12 +991,12 @@
     row.innerHTML = `
       <div style="padding:10px 12px;">
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-          <input id="edit-cat-icon-${id}" value="${c.icon}" placeholder="😀" style="width:52px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:18px;text-align:center;">
-          <input id="edit-cat-name-${id}" value="${c.name}" placeholder="分類名稱" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+          <input id="edit-cat-icon-${id}" value="${c.icon}" placeholder="😀" style="width:52px;padding:8px;border:1px solid #EDE3D5;border-radius:10px;font-size:18px;text-align:center;background:#FBF7F0;color:#3B332A;">
+          <input id="edit-cat-name-${id}" value="${c.name}" placeholder="分類名稱" style="flex:1;padding:8px;border:1px solid #EDE3D5;border-radius:10px;font-size:14px;background:#FBF7F0;color:#3B332A;">
         </div>
         <div style="display:flex;gap:6px;">
-          <button onclick="saveCategoryEdit('${id}')" style="flex:1;padding:8px;background:#3B82F6;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">✅ 儲存</button>
-          <button onclick="renderEditorCatList()" style="flex:1;padding:8px;background:#F1F5F9;color:#555;border:none;border-radius:8px;cursor:pointer;font-size:13px;">取消</button>
+          <button onclick="saveCategoryEdit('${id}')" style="flex:1;padding:8px;background:#E8A33F;color:white;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:bold;">儲存</button>
+          <button onclick="renderEditorCatList()" style="flex:1;padding:8px;background:#FBF7F0;color:#9E9285;border:none;border-radius:10px;cursor:pointer;font-size:13px;">取消</button>
         </div>
       </div>`;
   }
@@ -1017,7 +1042,7 @@
   function renderEditorShortcutList() {
     const list = document.getElementById('editorShortcutList');
     if (!allNoteShortcuts.length) {
-      list.innerHTML = '<div style="color:#aaa;font-size:14px;margin-bottom:8px;">尚無快捷備註</div>';
+      list.innerHTML = '<div style="color:#9E9285;font-size:14px;margin-bottom:8px;">尚無快捷備註</div>';
       return;
     }
     // 依分類分組顯示：先顯示全域（無分類），再依各分類顯示
@@ -1026,16 +1051,17 @@
     catNames.forEach(catName => {
       const items = allNoteShortcuts.filter(s => (s.category || '') === catName);
       if (!items.length) return;
+      const dotColor = catName ? getCatColor(catName) : '#C7BEB1';
       const label = catName
-        ? `<div style="font-size:12px;color:#6B7280;font-weight:600;margin:8px 0 4px;">${allCategories.find(c=>c.name===catName)?.icon || ''} ${catName}</div>`
-        : `<div style="font-size:12px;color:#6B7280;font-weight:600;margin:0 0 4px;">全部（不限分類）</div>`;
+        ? `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9E9285;font-weight:600;margin:8px 0 4px;"><span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0;"></span>${catName}</div>`
+        : `<div style="font-size:12px;color:#9E9285;font-weight:600;margin:0 0 4px;">全部（不限分類）</div>`;
       html += label;
       html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;">` +
         items.map(s =>
-          `<div id="sc-row-${s.id}" style="display:inline-flex;align-items:center;gap:4px;background:#F1F5F9;border-radius:20px;padding:5px 10px;font-size:14px;">
+          `<div id="sc-row-${s.id}" style="display:inline-flex;align-items:center;gap:4px;background:#FBF7F0;border:1px solid #EDE3D5;border-radius:99px;padding:5px 10px;font-size:14px;">
             <span>${s.text}</span>
-            <button onclick="editShortcut('${s.id}')" style="background:none;border:none;color:#3B82F6;cursor:pointer;font-size:11px;padding:0 2px;line-height:1;">✏️</button>
-            <button onclick="deleteShortcutFromEditor('${s.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:11px;padding:0 2px;line-height:1;">✕</button>
+            <button onclick="editShortcut('${s.id}')" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#9E9285" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5l2.5 2.5-6 6H2V7.5l6-6z"/></svg></button>
+            <button onclick="deleteShortcutFromEditor('${s.id}')" style="background:none;border:none;cursor:pointer;padding:0 2px;line-height:1;"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#C7BEB1" stroke-width="1.8" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg></button>
           </div>`
         ).join('') + `</div>`;
     });
@@ -1046,15 +1072,15 @@
     const s = allNoteShortcuts.find(s => s.id === id);
     if (!s) return;
     const row = document.getElementById('sc-row-' + id);
-    row.style.cssText = 'border-radius:10px;padding:8px;background:#F8FAFC;display:flex;flex-direction:column;gap:6px;width:100%;';
+    row.style.cssText = 'border-radius:13px;padding:8px;background:#FBF7F0;border:1px solid #EDE3D5;display:flex;flex-direction:column;gap:6px;width:100%;';
     row.innerHTML = `
       <div style="display:flex;gap:6px;align-items:center;">
-        <input id="edit-sc-text-${id}" value="${s.text}" style="flex:1;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
+        <input id="edit-sc-text-${id}" value="${s.text}" style="flex:1;padding:6px 8px;border:1px solid #EDE3D5;border-radius:8px;font-size:14px;background:#FBF7F0;color:#3B332A;">
       </div>
-      <select id="edit-sc-cat-${id}" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:white;"></select>
+      <select id="edit-sc-cat-${id}" style="padding:6px 8px;border:1px solid #EDE3D5;border-radius:8px;font-size:13px;background:#FBF7F0;color:#3B332A;"></select>
       <div style="display:flex;gap:6px;">
-        <button onclick="saveShortcutEdit('${id}')" style="flex:1;padding:6px;background:#3B82F6;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;">✅ 儲存</button>
-        <button onclick="renderEditorShortcutList()" style="flex:1;padding:6px;background:#F1F5F9;color:#555;border:none;border-radius:6px;cursor:pointer;font-size:13px;">取消</button>
+        <button onclick="saveShortcutEdit('${id}')" style="flex:1;padding:6px;background:#E8A33F;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">儲存</button>
+        <button onclick="renderEditorShortcutList()" style="flex:1;padding:6px;background:white;color:#9E9285;border:1px solid #EDE3D5;border-radius:8px;cursor:pointer;font-size:13px;">取消</button>
       </div>`;
     populateShortcutCatSelect('edit-sc-cat-' + id, s.category || '');
   }
@@ -1094,7 +1120,7 @@
   loadAll();
 
   // === 消費分析 ===
-  const ANALYSIS_COLORS = ['#3B82F6','#EF4444','#22C55E','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#F97316','#84CC16','#6366F1'];
+  const ANALYSIS_COLORS = ['#E8A33F','#CC6F4E','#7BA05B','#C9889F','#6E8FB0','#D2A24C','#B07A5B','#A0927C','#8FA88F','#C4A882'];
   let currentAnalysisTab = 'share';
   let currentAnalysisType = 'expense';
   let trendDataCache = null;
@@ -1105,7 +1131,7 @@
 
   function openAnalysis(type) {
     currentAnalysisType = type;
-    document.getElementById('analysisTitle').textContent = type === 'expense' ? '📊 消費分析' : '📊 收入分析';
+    document.getElementById('analysisTitle').textContent = type === 'expense' ? '消費分析' : '收入分析';
     document.getElementById('analysisMonthLabel').textContent = getMonthStr();
     trendDataCache = null;
     currentTrendCat = '';
@@ -1152,11 +1178,11 @@
     items.forEach((item, i) => {
       const pct = Math.round(item.amount / total * 100);
       const amt = item.amount >= 10000 ? Math.round(item.amount / 1000) + 'k' : item.amount.toLocaleString();
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #F8FAFC;font-size:14px;">
-        <span style="width:20px;text-align:center;font-weight:bold;color:#6B7280;">${i + 1}</span>
-        <span style="flex:1;color:#374151;">${item.note}</span>
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #EDE3D5;font-size:14px;">
+        <span style="width:20px;text-align:center;font-weight:bold;color:#9E9285;">${i + 1}</span>
+        <span style="flex:1;color:#3B332A;">${item.note}</span>
         <span style="font-weight:bold;color:${amtColor};">$${amt}</span>
-        <span style="color:#6B7280;font-size:13px;min-width:38px;text-align:right;">${pct}%</span>
+        <span style="color:#9E9285;font-size:13px;min-width:38px;text-align:right;">${pct}%</span>
       </div>`;
     });
     html += '</div>';
@@ -1190,7 +1216,7 @@
     const svg = document.getElementById('analysisChart');
     const cx = 70, cy = 70, r = 52, strokeW = 22;
     const circ = 2 * Math.PI * r;
-    let html = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#F1F5F9" stroke-width="${strokeW}"/>`;
+    let html = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#EDE3D5" stroke-width="${strokeW}"/>`;
     let accumulated = 0;
     items.forEach((item, i) => {
       const dash = (item.amount / total) * circ;
@@ -1203,8 +1229,8 @@
     });
     const totalLabel = total >= 10000 ? Math.round(total / 1000) + 'k' : total.toLocaleString();
     const centerLabel = currentAnalysisType === 'expense' ? '支出' : '收入';
-    html += `<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="12" fill="#6B7280">${centerLabel}</text>
-      <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="15" font-weight="bold" fill="#1C1C1E">$${totalLabel}</text>`;
+    html += `<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="12" fill="#9E9285">${centerLabel}</text>
+      <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="15" font-weight="bold" fill="#3B332A">$${totalLabel}</text>`;
     svg.innerHTML = html;
   }
 
@@ -1302,29 +1328,29 @@
     const baseY = (padT + cH).toFixed(1);
 
     let html = `<defs><linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#E8A33F" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#E8A33F" stop-opacity="0"/>
     </linearGradient></defs>`;
 
     [0.5, 1].forEach(frac => {
       const y = toY(niceMax * frac).toFixed(1);
       const val = Math.round(niceMax * frac);
       const lbl = val >= 10000 ? Math.round(val / 1000) + 'k' : val.toLocaleString();
-      html += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#F1F5F9" stroke-width="1"/>
-        <text x="${padL - 4}" y="${(parseFloat(y) + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#C0C4CC">${lbl}</text>`;
+      html += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#EDE3D5" stroke-width="1"/>
+        <text x="${padL - 4}" y="${(parseFloat(y) + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#C7BEB1">${lbl}</text>`;
     });
-    html += `<line x1="${padL}" y1="${baseY}" x2="${W - padR}" y2="${baseY}" stroke="#E5E5EA" stroke-width="1"/>`;
+    html += `<line x1="${padL}" y1="${baseY}" x2="${W - padR}" y2="${baseY}" stroke="#EDE3D5" stroke-width="1"/>`;
     html += `<polygon points="${toX(0).toFixed(1)},${baseY} ${pts} ${toX(n - 1).toFixed(1)},${baseY}" fill="url(#trendGrad)"/>`;
-    html += `<polyline points="${pts}" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    html += `<polyline points="${pts}" fill="none" stroke="#E8A33F" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
     months.forEach((m, i) => {
-      html += `<text x="${toX(i).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#9CA3AF">${parseInt(m.slice(5))}月</text>`;
+      html += `<text x="${toX(i).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#9E9285">${parseInt(m.slice(5))}月</text>`;
     });
     amounts.forEach((v, i) => {
       const cx = toX(i).toFixed(1), cy = toY(v).toFixed(1);
-      html += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="white" stroke="#3B82F6" stroke-width="2"/>`;
+      html += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="white" stroke="#E8A33F" stroke-width="2"/>`;
       if (v > 0) {
         const lbl = v >= 10000 ? Math.round(v / 1000) + 'k' : v.toLocaleString();
-        html += `<text x="${cx}" y="${(parseFloat(cy) - 7).toFixed(1)}" text-anchor="middle" font-size="10" fill="#3B82F6" font-weight="bold">${lbl}</text>`;
+        html += `<text x="${cx}" y="${(parseFloat(cy) - 7).toFixed(1)}" text-anchor="middle" font-size="10" fill="#E8A33F" font-weight="bold">${lbl}</text>`;
       }
     });
     svg.innerHTML = html;
