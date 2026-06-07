@@ -18,13 +18,19 @@ module.exports = async (req, res) => {
     // ── 批次讀取 ──────────────────────────────────────────────────
     if (action === 'getAll') {
       const month = p.month || '';
-      const [txRows, catRows, goalRows, nsRows] = await Promise.all([
-        sql`SELECT id, date, type, amount::float AS amount, category, note FROM transactions WHERE date LIKE ${month + '%'} ORDER BY date`,
+      const today = taiwanTodayStr();
+      await materializeDueRecurring(today);
+
+      const [txRows, catRows, goalRows, nsRows, recurringRows] = await Promise.all([
+        sql`SELECT id, date, type, amount::float AS amount, category, note, recurring_id FROM transactions WHERE date LIKE ${month + '%'} ORDER BY date`,
         sql`SELECT id, name, icon, type FROM categories ORDER BY sort_order NULLS LAST, id`,
         sql`SELECT id, name, target_amount::float AS target_amount, saved_amount::float AS saved_amount, deadline, status FROM goals`,
-        sql`SELECT id, text, category FROM note_shortcuts`
+        sql`SELECT id, text, category FROM note_shortcuts`,
+        sql`SELECT id, type, amount::float AS amount, category, note, day_of_month, start_date, end_date, status FROM recurring_transactions ORDER BY id`
       ]);
-      return out({ transactions: txRows, categories: catRows, goals: goalRows, noteShortcuts: nsRows });
+
+      const projectedTransactions = projectRecurringForMonth(recurringRows, txRows, month, today);
+      return out({ transactions: txRows, projectedTransactions, categories: catRows, goals: goalRows, noteShortcuts: nsRows, recurringTransactions: recurringRows });
     }
 
     if (action === 'getTransactions') {
@@ -48,6 +54,11 @@ module.exports = async (req, res) => {
       return out(rows);
     }
 
+    if (action === 'getRecurringTransactions') {
+      const rows = await sql`SELECT id, type, amount::float AS amount, category, note, day_of_month, start_date, end_date, status FROM recurring_transactions ORDER BY id`;
+      return out(rows);
+    }
+
     if (action === 'getInsights') {
       const rows = await sql`SELECT timestamp, insight FROM insights ORDER BY timestamp DESC`;
       return out(rows);
@@ -59,7 +70,7 @@ module.exports = async (req, res) => {
       const now = new Date();
       const id = String(Date.now());
       const createdAt = now.toISOString().replace('T', ' ').substring(0, 19);
-      await sql`INSERT INTO transactions (id, date, type, amount, category, note, created_at) VALUES (${id}, ${data.date}, ${data.type}, ${data.amount}, ${data.category}, ${data.note || null}, ${createdAt})`;
+      await sql`INSERT INTO transactions (id, date, type, amount, category, note, created_at, recurring_id) VALUES (${id}, ${data.date}, ${data.type}, ${data.amount}, ${data.category}, ${data.note || null}, ${createdAt}, ${data.recurring_id || null})`;
       return out({ success: true, id });
     }
 
@@ -140,6 +151,32 @@ module.exports = async (req, res) => {
       return out({ success: true });
     }
 
+    // ── 固定收支範本 ──────────────────────────────────────────────
+    if (action === 'addRecurringTransaction') {
+      const data = JSON.parse(p.data);
+      const createdAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      await sql`INSERT INTO recurring_transactions (id, type, amount, category, note, day_of_month, start_date, end_date, status, created_at) VALUES (${data.id}, ${data.type}, ${data.amount}, ${data.category}, ${data.note || null}, ${data.day_of_month}, ${data.start_date}, ${data.end_date || null}, ${data.status || 'active'}, ${createdAt})`;
+      return out({ success: true, id: data.id });
+    }
+
+    if (action === 'updateRecurringTransaction') {
+      const data = JSON.parse(p.data);
+      if (data.type !== undefined)         await sql`UPDATE recurring_transactions SET type=${data.type} WHERE id=${p.id}`;
+      if (data.amount !== undefined)       await sql`UPDATE recurring_transactions SET amount=${data.amount} WHERE id=${p.id}`;
+      if (data.category !== undefined)     await sql`UPDATE recurring_transactions SET category=${data.category} WHERE id=${p.id}`;
+      if (data.note !== undefined)         await sql`UPDATE recurring_transactions SET note=${data.note} WHERE id=${p.id}`;
+      if (data.day_of_month !== undefined) await sql`UPDATE recurring_transactions SET day_of_month=${data.day_of_month} WHERE id=${p.id}`;
+      if (data.start_date !== undefined)   await sql`UPDATE recurring_transactions SET start_date=${data.start_date} WHERE id=${p.id}`;
+      if (data.end_date !== undefined)     await sql`UPDATE recurring_transactions SET end_date=${data.end_date} WHERE id=${p.id}`;
+      if (data.status !== undefined)       await sql`UPDATE recurring_transactions SET status=${data.status} WHERE id=${p.id}`;
+      return out({ success: true });
+    }
+
+    if (action === 'deleteRecurringTransaction') {
+      await sql`DELETE FROM recurring_transactions WHERE id=${p.id}`;
+      return out({ success: true });
+    }
+
     // ── 洞察 ──────────────────────────────────────────────────────
     if (action === 'generateInsight') {
       const result = await generateInsight();
@@ -153,6 +190,90 @@ module.exports = async (req, res) => {
     return res.status(200).json({ error: e.toString() });
   }
 };
+
+// ── 固定收支：日期運算與投影/入帳 ────────────────────────────────
+function taiwanTodayStr() {
+  const tw = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  return tw.toISOString().substring(0, 10);
+}
+
+// 將「每月 N 號」換算成指定月份的實際日期；當月天數不足時取該月最後一天（例如 31 號 → 2 月 28/29 號）
+function occurrenceDateForMonth(yearMonth, dayOfMonth) {
+  const [y, m] = yearMonth.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  const day = Math.min(dayOfMonth, lastDay);
+  return `${yearMonth}-${String(day).padStart(2, '0')}`;
+}
+
+function monthsBetween(startYM, endYM) {
+  const result = [];
+  let [y, m] = startYM.split('-').map(Number);
+  const [ey, em] = endYM.split('-').map(Number);
+  while (y < ey || (y === ey && m <= em)) {
+    result.push(`${y}-${String(m).padStart(2, '0')}`);
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return result;
+}
+
+// 補產生「已經到期但尚未正式入帳」的固定收支交易（含補登過去未開啟 App 期間錯過的月份）
+async function materializeDueRecurring(today) {
+  const currentYM = today.substring(0, 7);
+  const templates = await sql`SELECT id, type, amount::float AS amount, category, note, day_of_month, start_date, end_date FROM recurring_transactions WHERE status = 'active'`;
+
+  for (const tpl of templates) {
+    if (!tpl.start_date) continue;
+    const startYM = tpl.start_date.substring(0, 7);
+    let endYM = currentYM;
+    if (tpl.end_date && tpl.end_date.substring(0, 7) < endYM) endYM = tpl.end_date.substring(0, 7);
+    if (startYM > endYM) continue;
+
+    for (const ym of monthsBetween(startYM, endYM)) {
+      const occDate = occurrenceDateForMonth(ym, tpl.day_of_month);
+      if (occDate > today) continue;
+      if (occDate < tpl.start_date) continue;
+      if (tpl.end_date && occDate > tpl.end_date) continue;
+
+      const existing = await sql`SELECT id FROM transactions WHERE recurring_id = ${tpl.id} AND date LIKE ${ym + '%'} LIMIT 1`;
+      if (existing.length > 0) continue;
+
+      const id = String(Date.now()) + String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+      const createdAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      await sql`INSERT INTO transactions (id, date, type, amount, category, note, created_at, recurring_id) VALUES (${id}, ${occDate}, ${tpl.type}, ${tpl.amount}, ${tpl.category}, ${tpl.note}, ${createdAt}, ${tpl.id})`;
+    }
+  }
+}
+
+// 計算指定月份中「尚未發生、也尚未入帳」的固定收支投影（不寫入資料庫，僅供前端預覽顯示）
+function projectRecurringForMonth(templates, txRows, month, today) {
+  const materializedIds = new Set(txRows.filter(r => r.recurring_id).map(r => r.recurring_id));
+  const projections = [];
+
+  for (const tpl of templates) {
+    if (tpl.status !== 'active') continue;
+    if (materializedIds.has(tpl.id)) continue;
+    if (tpl.start_date && tpl.start_date.substring(0, 7) > month) continue;
+    if (tpl.end_date && tpl.end_date.substring(0, 7) < month) continue;
+
+    const occDate = occurrenceDateForMonth(month, tpl.day_of_month);
+    if (occDate <= today) continue;
+    if (tpl.start_date && occDate < tpl.start_date) continue;
+    if (tpl.end_date && occDate > tpl.end_date) continue;
+
+    projections.push({
+      id: 'proj_' + tpl.id + '_' + month,
+      date: occDate,
+      type: tpl.type,
+      amount: tpl.amount,
+      category: tpl.category,
+      note: tpl.note,
+      recurring_id: tpl.id,
+      projected: true
+    });
+  }
+  return projections;
+}
 
 // ── generateInsight（移植自 GAS）──────────────────────────────────
 async function generateInsight() {
